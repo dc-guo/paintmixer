@@ -648,6 +648,140 @@ h3 {
   font-size: 0.85rem;
 }
 
+.match-list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.match-row:last-child {
+  border-bottom: none;
+  padding-bottom: 2px;
+}
+
+.match-dot {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(47, 50, 53, 0.08);
+  border-radius: 50%;
+}
+
+.match-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.match-name .n {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.match-name .d {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--sans);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.owned-mark {
+  color: var(--accent);
+}
+
+.match-tag {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-style: italic;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.match-tag.close {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.match-tag.fair {
+  background: #f1efe9;
+  color: var(--ink-soft);
+}
+
+.match-tag.far {
+  background: var(--clay-wash);
+  color: var(--ink-faint);
+}
+
+.drawer-search {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.drawer-search::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.drawer-search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.drawer .micro {
+  display: block;
+  margin: 12px 0 4px;
+}
+
+.paint-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.paint-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.paint-list li:last-child .paint-row {
+  border-bottom: none;
+}
+
+.paint-row .mini-swatch {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.paint-name {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.paint-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
 .save-form {
   display: flex;
   flex-direction: column;

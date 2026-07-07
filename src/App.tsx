@@ -3,7 +3,13 @@ import { PalettesPage } from './pages/PalettesPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
-import { createId, loadSavedPalettes, persistSavedPalettes } from './lib/storage';
+import {
+  createId,
+  loadOwnedPaintIds,
+  loadSavedPalettes,
+  persistOwnedPaintIds,
+  persistSavedPalettes,
+} from './lib/storage';
 import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
 type Route = 'start' | 'workspace' | 'palettes';
@@ -35,6 +41,7 @@ export function App() {
   const [workingColors, setWorkingColors] = useState<SampledColor[]>([]);
   const [activeColorId, setActiveColorId] = useState<string | null>(null);
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(loadSavedPalettes);
+  const [ownedPaintIds, setOwnedPaintIds] = useState<string[]>(loadOwnedPaintIds);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(routeFromHash());
@@ -45,6 +52,16 @@ export function App() {
   useEffect(() => {
     persistSavedPalettes(savedPalettes);
   }, [savedPalettes]);
+
+  useEffect(() => {
+    persistOwnedPaintIds(ownedPaintIds);
+  }, [ownedPaintIds]);
+
+  const toggleOwnedPaint = (id: string) => {
+    setOwnedPaintIds((current) =>
+      current.includes(id) ? current.filter((owned) => owned !== id) : [...current, id],
+    );
+  };
 
   const navigate = (next: Route) => {
     const item = NAV_ITEMS.find((candidate) => candidate.route === next);
@@ -184,6 +201,8 @@ export function App() {
             onAddColor={addColor}
             onUpdateColor={updateColor}
             onArtworkSelected={selectArtwork}
+            ownedPaintIds={ownedPaintIds}
+            onToggleOwnedPaint={toggleOwnedPaint}
             onAutoGenerate={() =>
               artwork ? autoGeneratePalette(artwork.dataUrl) : Promise.resolve(0)
             }

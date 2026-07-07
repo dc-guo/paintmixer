@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ImageColorPicker } from '../components/ImageColorPicker';
 import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
+import { liquitexBasics } from '../data/liquitexBasics';
 import { getPrintViability, hexToRgb, rgbToCmyk } from '../lib/color';
+import { matchPaints } from '../lib/paintMatching';
 import type { ColorSource, SampledColor } from '../types/palette';
+
+const CONFIDENCE_LABEL = { high: 'close', medium: 'fair', low: 'far' } as const;
 
 type Artwork = {
   dataUrl: string;
@@ -32,6 +36,8 @@ type WorkspacePageProps = {
   onSelectColor: (id: string) => void;
   onRemoveColor: (id: string) => void;
   onSavePalette: (name: string) => boolean;
+  ownedPaintIds: string[];
+  onToggleOwnedPaint: (id: string) => void;
 };
 
 export function WorkspacePage({
@@ -45,6 +51,8 @@ export function WorkspacePage({
   onSelectColor,
   onRemoveColor,
   onSavePalette,
+  ownedPaintIds,
+  onToggleOwnedPaint,
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState('');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -52,12 +60,25 @@ export function WorkspacePage({
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [paintQuery, setPaintQuery] = useState('');
 
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
   const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
   const inspectedRgb = inspectedHex ? hexToRgb(inspectedHex) : null;
   const inspectedCmyk = inspectedRgb ? rgbToCmyk(inspectedRgb) : null;
   const viability = inspectedRgb ? getPrintViability(inspectedRgb) : null;
+
+  const matches = useMemo(
+    () => (inspectedRgb ? matchPaints(inspectedRgb, liquitexBasics, 4) : []),
+    [inspectedHex],
+  );
+
+  const filteredPaints = useMemo(() => {
+    const query = paintQuery.trim().toLowerCase();
+    return query
+      ? liquitexBasics.filter((paint) => paint.name.toLowerCase().includes(query))
+      : liquitexBasics;
+  }, [paintQuery]);
 
   const inspectedLabel = preview
     ? 'previewing — not in palette'
@@ -209,13 +230,41 @@ export function WorkspacePage({
 
           <article className="panel">
             <p className="eyebrow">Closest Liquitex BASICS</p>
-            <p className="empty-state">Matches arrive with the paint library.</p>
+            {matches.length > 0 ? (
+              <ul className="match-list">
+                {matches.map((match) => (
+                  <li className="match-row" key={match.paint.id}>
+                    <span
+                      aria-hidden
+                      className="match-dot"
+                      style={{ backgroundColor: match.paint.hex }}
+                    />
+                    <span className="match-name">
+                      <span className="n">{match.paint.name}</span>
+                      <span className="d">
+                        ΔE ≈ {Math.round(match.deltaE)} ·{' '}
+                        {ownedPaintIds.includes(match.paint.id) ? (
+                          <span className="owned-mark">owned</span>
+                        ) : (
+                          'not owned'
+                        )}
+                      </span>
+                    </span>
+                    <span className={`match-tag ${CONFIDENCE_LABEL[match.confidence]}`}>
+                      {CONFIDENCE_LABEL[match.confidence]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">Select a color to see the closest paints.</p>
+            )}
             <button
               className="secondary-button"
               onClick={() => setIsInventoryOpen(true)}
               type="button"
             >
-              Edit my paints
+              Edit my paints · {ownedPaintIds.length}
             </button>
           </article>
 
@@ -264,10 +313,39 @@ export function WorkspacePage({
                 Close
               </button>
             </header>
-            <p className="empty-state">
-              The Liquitex BASICS library lands next. You will mark owned paints here; matches and
-              mixes will use only those.
+            <input
+              aria-label="Search paints"
+              className="drawer-search"
+              onChange={(event) => setPaintQuery(event.target.value)}
+              placeholder="Search paints"
+              value={paintQuery}
+            />
+            <p className="micro">
+              {ownedPaintIds.length} of {liquitexBasics.length} owned · approximate colors
             </p>
+            {filteredPaints.length > 0 ? (
+              <ul className="paint-list">
+                {filteredPaints.map((paint) => (
+                  <li key={paint.id}>
+                    <label className="paint-row">
+                      <span
+                        aria-hidden
+                        className="mini-swatch"
+                        style={{ backgroundColor: paint.hex }}
+                      />
+                      <span className="paint-name">{paint.name}</span>
+                      <input
+                        checked={ownedPaintIds.includes(paint.id)}
+                        onChange={() => onToggleOwnedPaint(paint.id)}
+                        type="checkbox"
+                      />
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">No paints match "{paintQuery}".</p>
+            )}
           </aside>
         </div>
       ) : null}
