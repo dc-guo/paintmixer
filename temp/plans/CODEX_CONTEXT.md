@@ -839,3 +839,37 @@ Current approved decisions:
 9. (2026-07-06) Structure the app as three pages: (1) Start/Upload, (2) Palette Workspace with per-area color picking and palette customization, (3) Saved Palettes with an aggregate paint usage chart and ideal final output previews. See Section 10 for details.
 10. (2026-07-06) A backend WILL be added after the POC, with Supabase as the intended platform (auth + cloud sync of palettes and paint inventory). It remains out of scope for the POC, but keep all persistence behind `lib/storage.ts` so the future migration is a contained swap. Uploaded artwork images stay local-only regardless (Guardrail 3).
 11. (2026-07-07) CMYK values are NOT shown anywhere in the UI (dropped by product decision — CMYK is print-ink notation, not paint-mix notation, and reads as jargon). The plain-language print/paint outlook ("may shift in print") stays. The `rgbToCmyk` utility remains in `lib/color.ts` for exports or a future print view. Delta-E values are likewise export-only, never UI. Paint mixes are always expressed as parts ratios.
+12. (2026-07-07) PaintBridge is going PUBLIC as a hosted website on a free platform. GitHub Pages (workflow in `.github/workflows/deploy.yml`, deploys `main` on merge) if the repo goes public; Cloudflare Pages if the source stays private. Pending: Diane's call on making the repo public.
+13. (2026-07-07) Expansion order: richer color tools FIRST, then accounts (Supabase auth with email verification and 2FA, cloud sync). See Section 19.
+14. (2026-07-07) Liquitex BASICS only — multi-brand support is explicitly out of scope (removes §17 item 9 from consideration).
+
+---
+
+# 19. Post-POC Roadmap (added 2026-07-07)
+
+## Phase 1 — Go public (hosting)
+
+The app is fully static (hash routing, no server), so any static host works with zero code changes.
+
+- Preferred: GitHub Pages (free, already wired via `.github/workflows/deploy.yml`; requires the repo to be public on the free plan; site at https://dc-guo.github.io/paintmixer/). The workflow runs tests + typecheck before deploying and only fires on pushes to `main`.
+- If the source stays private: Cloudflare Pages (free tier: private repos, unlimited bandwidth, previews per PR). Build command `npm run build`, output `dist`, no base-path override needed.
+- Custom domain optional later on either platform.
+
+## Phase 2 — Richer color tools
+
+1. Full, validated Liquitex BASICS library: the complete color range with hexes checked against manufacturer/physical swatch references (values stay labeled approximate).
+2. Better mixing model: subtractive-leaning mix estimation and use of the per-paint opacity data in recipe scoring and notes (the original "opacity and translucence" scope item).
+3. Recipe interaction: show 2–3 alternate mixes; live ratio tweaking with an updating preview.
+4. Extraction upgrades: user-selectable palette size, better clustering, per-region re-extraction.
+5. Palette tools: duplicate palette, reorder colors, name individual colors.
+
+## Phase 3 — Accounts & sync (Supabase)
+
+- Supabase auth: email + password with email verification, TOTP 2FA, transactional email.
+- Cloud sync of palettes and paint inventory (Postgres) behind the existing `lib/storage.ts` seam; the app stays usable signed-out (local-first), sign-in adds sync.
+- Artwork images remain local-only (Guardrail 3); revisit thumbnail sync only with explicit user consent.
+- Supabase free tier (50k MAU, 500MB) is sufficient to launch.
+
+## Phase 4 — Later
+
+Shareable read-only palette links, printable mix sheets, swatch calibration, photo-based swatch capture.
