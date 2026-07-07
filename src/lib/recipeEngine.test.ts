@@ -52,8 +52,10 @@ test('suggestMixes explains when the target is out of reach of the paints', () =
   );
 });
 
-test('suggestMixes mixes white and black toward a mid gray', () => {
-  const target = hexToRgb('#ABABAB');
+test('suggestMixes mixes white and black toward a reachable gray', () => {
+  // Kubelka-Munk mixing lets black dominate (as real paint does), so light
+  // grays are out of reach at 6:1 — a darker gray is the realistic ask.
+  const target = hexToRgb('#5E5E5E');
   assert.ok(target);
   const recipes = suggestMixes(target, [white, black], 3);
   const best = recipes[0];

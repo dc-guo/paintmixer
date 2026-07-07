@@ -2,6 +2,7 @@ import type { RGB } from '../types/color';
 import type { MixRecipe, Paint } from '../types/paint';
 import { getSaturation, rgbToHex } from './color.js';
 import { labDistance, linearToSrgb, rgbToLab, srgbToLinear } from './deltaE.js';
+import { ksToLinear, linearToKS } from './mixing.js';
 import { confidenceForDistance } from './paintMatching.js';
 
 /** Shared with the summary layer so single-paint phrasing stays in sync. */
@@ -44,6 +45,66 @@ function isWhitePaint(paint: Paint) {
   return rgbToLab(paint.rgb).l >= WHITE_LIGHTNESS;
 }
 
+type ChannelKS = {
+  r: number;
+  g: number;
+  b: number;
+};
+
+function paintKS(paint: Paint): ChannelKS {
+  return {
+    r: linearToKS(srgbToLinear(paint.rgb.r)),
+    g: linearToKS(srgbToLinear(paint.rgb.g)),
+    b: linearToKS(srgbToLinear(paint.rgb.b)),
+  };
+}
+
+function mixFromKS(entries: Array<{ ks: ChannelKS; weight: number }>): RGB {
+  let total = 0;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  for (const { ks, weight } of entries) {
+    total += weight;
+    r += ks.r * weight;
+    g += ks.g * weight;
+    b += ks.b * weight;
+  }
+
+  if (total === 0) {
+    return { r: 0, g: 0, b: 0 };
+  }
+
+  return {
+    r: linearToSrgb(ksToLinear(r / total)),
+    g: linearToSrgb(ksToLinear(g / total)),
+    b: linearToSrgb(ksToLinear(b / total)),
+  };
+}
+
+/**
+ * Estimate the color of a paint mixture: single-constant Kubelka–Munk mixing
+ * weighted by parts × tinting strength. A single-paint "mix" is the paint
+ * itself. An approximation — the UI labels every result as such.
+ */
+export function estimateMix(ingredients: Ingredient[]): RGB {
+  if (ingredients.length === 0) {
+    return { r: 0, g: 0, b: 0 };
+  }
+
+  if (ingredients.length === 1) {
+    return ingredients[0].paint.rgb;
+  }
+
+  return mixFromKS(
+    ingredients.map(({ paint, parts }) => ({
+      ks: paintKS(paint),
+      weight: parts * (paint.tintingStrength ?? 1),
+    })),
+  );
+}
+
 function buildNotes(target: RGB, candidate: Candidate): string[] {
   const notes: string[] = [];
 
@@ -70,10 +131,19 @@ function buildNotes(target: RGB, candidate: Candidate): string[] {
     notes.push('The target is more saturated than this mix will likely reach.');
   }
 
-  const transparent = candidate.ingredients.find(({ paint }) => paint.opacity === 'transparent');
+  const totalParts = candidate.ingredients.reduce((sum, { parts }) => sum + parts, 0);
+  const transparentParts = candidate.ingredients
+    .filter(({ paint }) => paint.opacity === 'transparent')
+    .reduce((sum, { parts }) => sum + parts, 0);
 
-  if (transparent) {
-    notes.push(`${transparent.paint.name} is transparent — expect shifts when layering.`);
+  if (transparentParts > 0) {
+    notes.push(
+      transparentParts / totalParts > 0.5
+        ? 'Mostly transparent paints — expect a glaze that shifts over what is underneath.'
+        : `${
+            candidate.ingredients.find(({ paint }) => paint.opacity === 'transparent')?.paint.name
+          } is transparent — expect shifts when layering.`,
+    );
   }
 
   return notes.slice(0, 2);
@@ -100,49 +170,26 @@ export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3):
   }
 
   // Hot loop: thousands of candidates are scored per call, so convert the
-  // fixed target to Lab once and linearize each paint once up front.
+  // fixed target to Lab once and compute each paint's K/S + tinting weight
+  // factor once up front.
   const targetLab = rgbToLab(target);
-  const linearById = new Map(
+  const ksById = new Map(
     ownedPaints.map((paint) => [
       paint.id,
-      {
-        r: srgbToLinear(paint.rgb.r),
-        g: srgbToLinear(paint.rgb.g),
-        b: srgbToLinear(paint.rgb.b),
-      },
+      { ks: paintKS(paint), tint: paint.tintingStrength ?? 1 },
     ]),
   );
 
   const makeCandidate = (ingredients: Ingredient[]): Candidate => {
-    let total = 0;
-    let r = 0;
-    let g = 0;
-    let b = 0;
-
-    for (const { paint, parts } of ingredients) {
-      const linear = linearById.get(paint.id);
-
-      if (!linear) {
-        continue;
-      }
-
-      total += parts;
-      r += linear.r * parts;
-      g += linear.g * parts;
-      b += linear.b * parts;
-    }
-
-    // Weighted average in linear RGB — a rough stand-in for real pigment
-    // mixing, which is subtractive. Good enough to rank starter mixes; the
-    // UI frames every result as an approximation.
-    const estimated: RGB =
-      total === 0
-        ? { r: 0, g: 0, b: 0 }
-        : {
-            r: linearToSrgb(r / total),
-            g: linearToSrgb(g / total),
-            b: linearToSrgb(b / total),
-          };
+    const estimated =
+      ingredients.length === 1
+        ? ingredients[0].paint.rgb
+        : mixFromKS(
+            ingredients.flatMap(({ paint, parts }) => {
+              const cached = ksById.get(paint.id);
+              return cached ? [{ ks: cached.ks, weight: parts * cached.tint }] : [];
+            }),
+          );
     const deltaE = labDistance(targetLab, rgbToLab(estimated));
 
     return {

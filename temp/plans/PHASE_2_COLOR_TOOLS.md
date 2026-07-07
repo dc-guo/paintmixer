@@ -11,7 +11,11 @@ Standing constraints for every milestone:
 - Approximation language everywhere; no CMYK or delta-E in the UI (decision #11) — confidence is
   always close/fair/far, mixes are always parts ratios.
 - Design system: white ground, Palatino serif, muted slate accent, terse copy (memory + §10).
-- Workflow: build on `working`, PR to `main`, CI green, browser-verify before merge. Merging deploys.
+- Workflow (updated 2026-07-07 after 2.1 shipped): milestones 2.2–2.5 accumulate as commits on
+  `working` — ONE PR at the end of the phase, not per milestone. After each milestone commit,
+  pause for Diane's UAT on the dev server before starting the next. Before the phase PR goes up,
+  run a high-effort multi-agent code review over the accumulated diff and apply fixes.
+  (2.1 predates this rule and already shipped via PR #2.)
 - localStorage schema changes must be backward compatible (new fields optional; loaders already
   shape-validate). `lib/storage.ts` stays the single persistence seam for the later Supabase swap.
 

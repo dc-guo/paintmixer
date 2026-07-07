@@ -1,4 +1,4 @@
-import { hexToRgb } from '../lib/color.js';
+﻿import { hexToRgb } from '../lib/color.js';
 import type { Paint, PaintOpacity } from '../types/paint';
 
 // Complete current Liquitex BASICS range (72 colors), per the official
@@ -22,15 +22,17 @@ type SeedPaint = {
   hex: string;
   opacity?: PaintOpacity;
   pigmentNotes?: string;
+  /** Rough relative tinting strength; only set where clearly non-average. */
+  tintingStrength?: number;
   sourceNote?: string;
 };
 
 const SEED: SeedPaint[] = [
   // Whites & near-whites
-  { id: 'titanium-white', name: 'Titanium White', hex: '#F4F4F0', opacity: 'opaque', pigmentNotes: 'PW6' },
-  { id: 'unbleached-titanium', name: 'Unbleached Titanium', hex: '#E6DCC3', opacity: 'opaque' },
-  { id: 'parchment', name: 'Parchment', hex: '#EFE8D5', opacity: 'semi-opaque' },
-  { id: 'transparent-mixing-white', name: 'Transparent Mixing White', hex: '#F1F1EE', opacity: 'transparent', pigmentNotes: 'glazing white — thins color without hiding' },
+  { id: 'titanium-white', tintingStrength: 0.7, name: 'Titanium White', hex: '#F4F4F0', opacity: 'opaque', pigmentNotes: 'PW6' },
+  { id: 'unbleached-titanium', tintingStrength: 0.7, name: 'Unbleached Titanium', hex: '#E6DCC3', opacity: 'opaque' },
+  { id: 'parchment', tintingStrength: 0.7, name: 'Parchment', hex: '#EFE8D5', opacity: 'semi-opaque' },
+  { id: 'transparent-mixing-white', tintingStrength: 0.3, name: 'Transparent Mixing White', hex: '#F1F1EE', opacity: 'transparent', pigmentNotes: 'glazing white — thins color without hiding' },
 
   // Yellows
   { id: 'primary-yellow', name: 'Primary Yellow', hex: '#FFD200', opacity: 'semi-opaque' },
@@ -59,22 +61,22 @@ const SEED: SeedPaint[] = [
   { id: 'rose-pink', name: 'Rose Pink', hex: '#ED96AC', opacity: 'opaque' },
   { id: 'light-portrait-pink', name: 'Light Portrait Pink', hex: '#F4C2AC', opacity: 'opaque' },
   { id: 'medium-magenta', name: 'Medium Magenta', hex: '#C25E9F', opacity: 'semi-opaque' },
-  { id: 'quinacridone-magenta', name: 'Quinacridone Magenta', hex: '#8A2E63', opacity: 'transparent', pigmentNotes: 'PR122' },
+  { id: 'quinacridone-magenta', tintingStrength: 1.6, name: 'Quinacridone Magenta', hex: '#8A2E63', opacity: 'transparent', pigmentNotes: 'PR122' },
 
   // Violets
   { id: 'brilliant-purple', name: 'Brilliant Purple', hex: '#7B68AE', opacity: 'semi-opaque' },
   { id: 'light-blue-violet', name: 'Light Blue Violet', hex: '#8290D4', opacity: 'opaque' },
   { id: 'prism-violet', name: 'Prism Violet', hex: '#6F3E9C', opacity: 'semi-transparent' },
   { id: 'deep-violet', name: 'Deep Violet', hex: '#4A2C5F', opacity: 'semi-transparent' },
-  { id: 'dioxazine-purple', name: 'Dioxazine Purple', hex: '#3B2B56', opacity: 'transparent', pigmentNotes: 'PV23' },
+  { id: 'dioxazine-purple', tintingStrength: 1.8, name: 'Dioxazine Purple', hex: '#3B2B56', opacity: 'transparent', pigmentNotes: 'PV23' },
   { id: 'purple-gray', name: 'Purple Gray', hex: '#6F6172', opacity: 'opaque' },
 
   // Blues
   { id: 'primary-blue', name: 'Primary Blue', hex: '#0069B1', opacity: 'semi-transparent' },
   { id: 'brilliant-blue', name: 'Brilliant Blue', hex: '#1E7FC2', opacity: 'semi-opaque' },
-  { id: 'ultramarine-blue', name: 'Ultramarine Blue', hex: '#2E3192', opacity: 'transparent', pigmentNotes: 'PB29' },
-  { id: 'phthalocyanine-blue', name: 'Phthalocyanine Blue', hex: '#0D3B70', opacity: 'semi-transparent', pigmentNotes: 'PB15' },
-  { id: 'prussian-blue-hue', name: 'Prussian Blue Hue', hex: '#1B3A54', opacity: 'semi-transparent' },
+  { id: 'ultramarine-blue', tintingStrength: 1.2, name: 'Ultramarine Blue', hex: '#2E3192', opacity: 'transparent', pigmentNotes: 'PB29' },
+  { id: 'phthalocyanine-blue', tintingStrength: 2.2, name: 'Phthalocyanine Blue', hex: '#0D3B70', opacity: 'semi-transparent', pigmentNotes: 'PB15' },
+  { id: 'prussian-blue-hue', tintingStrength: 1.8, name: 'Prussian Blue Hue', hex: '#1B3A54', opacity: 'semi-transparent' },
   { id: 'cerulean-blue-hue', name: 'Cerulean Blue Hue', hex: '#2D77BC', opacity: 'opaque' },
   { id: 'light-blue-permanent', name: 'Light Blue Permanent', hex: '#6FA8CE', opacity: 'opaque' },
   { id: 'cobalt-blue-hue', name: 'Cobalt Blue Hue', hex: '#2A52A0', opacity: 'semi-opaque' },
@@ -83,7 +85,7 @@ const SEED: SeedPaint[] = [
 
   // Greens
   { id: 'bright-aqua-green', name: 'Bright Aqua Green', hex: '#1FB6B4', opacity: 'semi-opaque' },
-  { id: 'phthalocyanine-green', name: 'Phthalocyanine Green', hex: '#10604B', opacity: 'semi-transparent', pigmentNotes: 'PG7' },
+  { id: 'phthalocyanine-green', tintingStrength: 2.2, name: 'Phthalocyanine Green', hex: '#10604B', opacity: 'semi-transparent', pigmentNotes: 'PG7' },
   { id: 'green-deep-permanent', name: 'Green Deep Permanent', hex: '#0E6B44', opacity: 'semi-transparent' },
   { id: 'hookers-green-hue', name: "Hooker's Green Hue Permanent", hex: '#2C5234', opacity: 'semi-transparent' },
   { id: 'light-green-permanent', name: 'Light Green Permanent', hex: '#8DC63F', opacity: 'semi-opaque' },
@@ -99,18 +101,18 @@ const SEED: SeedPaint[] = [
   { id: 'burnt-umber', name: 'Burnt Umber', hex: '#452F21', opacity: 'semi-opaque', pigmentNotes: 'PBr7 (earth)' },
 
   // Grays & blacks
-  { id: 'paynes-gray', name: "Payne's Gray", hex: '#35414E', opacity: 'semi-opaque' },
+  { id: 'paynes-gray', tintingStrength: 1.4, name: "Payne's Gray", hex: '#35414E', opacity: 'semi-opaque' },
   { id: 'neutral-gray-5', name: 'Neutral Gray 5', hex: '#7F8285', opacity: 'opaque' },
-  { id: 'ivory-black', name: 'Ivory Black', hex: '#292724', opacity: 'opaque', pigmentNotes: 'PBk9 (bone black)' },
-  { id: 'mars-black', name: 'Mars Black', hex: '#222222', opacity: 'opaque', pigmentNotes: 'PBk11 (iron oxide)' },
+  { id: 'ivory-black', tintingStrength: 1.6, name: 'Ivory Black', hex: '#292724', opacity: 'opaque', pigmentNotes: 'PBk9 (bone black)' },
+  { id: 'mars-black', tintingStrength: 1.8, name: 'Mars Black', hex: '#222222', opacity: 'opaque', pigmentNotes: 'PBk11 (iron oxide)' },
 
   // Metallics & iridescents (flat sRGB stand-ins; sheen is not representable)
   { id: 'gold', name: 'Gold', hex: '#C49A3C', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
   { id: 'silver', name: 'Silver', hex: '#ACAEB1', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
   { id: 'copper', name: 'Copper', hex: '#B26946', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
   { id: 'bronze', name: 'Bronze', hex: '#8C6E3C', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
-  { id: 'iridescent-white', name: 'Iridescent White', hex: '#EEEEE8', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
-  { id: 'iridescent-graphite', name: 'Iridescent Graphite', hex: '#4A4C4F', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
+  { id: 'iridescent-white', tintingStrength: 0.7, name: 'Iridescent White', hex: '#EEEEE8', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
+  { id: 'iridescent-graphite', tintingStrength: 1.3, name: 'Iridescent Graphite', hex: '#4A4C4F', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
 
   // Fluorescents (glow exceeds sRGB; values are clipped stand-ins)
   { id: 'fluorescent-yellow', name: 'Fluorescent Yellow', hex: '#F2FF26', opacity: 'semi-transparent', pigmentNotes: 'fluorescent — glow exceeds sRGB' },
