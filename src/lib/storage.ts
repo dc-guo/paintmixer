@@ -21,7 +21,16 @@ export function persistSavedPalettes(palettes: SavedPalette[]) {
   try {
     window.localStorage.setItem(SAVED_PALETTES_KEY, JSON.stringify(palettes));
   } catch {
-    // Storage can be unavailable (private mode, quota); persistence is best-effort.
+    try {
+      // Likely over quota from artwork thumbnails: keep the color data,
+      // drop the images.
+      window.localStorage.setItem(
+        SAVED_PALETTES_KEY,
+        JSON.stringify(palettes.map(({ artwork: _artwork, ...rest }) => rest)),
+      );
+    } catch {
+      // Storage can be unavailable (private mode); persistence is best-effort.
+    }
   }
 }
 

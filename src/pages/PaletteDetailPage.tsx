@@ -173,6 +173,14 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
           </div>
         </div>
 
+        {palette.artwork ? (
+          <img
+            alt={`Source artwork: ${palette.artwork.name}`}
+            className="detail-artwork"
+            src={palette.artwork.thumbnailDataUrl}
+          />
+        ) : null}
+
         <ul className="color-blocks">
           {items.map(({ color }) => {
             const rgb = hexToRgb(color.hex);

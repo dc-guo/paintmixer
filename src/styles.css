@@ -1048,6 +1048,10 @@ h3 {
   gap: 7px;
 }
 
+.spec {
+  line-height: 1.2;
+}
+
 .spec .k {
   display: block;
   font-family: var(--sans);
@@ -1120,6 +1124,17 @@ h3 {
   color: var(--ink-faint);
   font-style: italic;
   font-size: 0.82rem;
+}
+
+.detail-artwork {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
 }
 
 .back-link {

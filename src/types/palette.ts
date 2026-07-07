@@ -13,4 +13,9 @@ export type SavedPalette = {
   name: string;
   colors: SampledColor[];
   createdAt: string;
+  /** Downscaled local thumbnail of the source artwork; absent for hex-only palettes. */
+  artwork?: {
+    thumbnailDataUrl: string;
+    name: string;
+  };
 };

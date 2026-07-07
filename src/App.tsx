@@ -4,6 +4,7 @@ import { PalettesPage } from './pages/PalettesPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
+import { createArtworkThumbnail } from './lib/thumbnails';
 import {
   createId,
   loadOwnedPaintIds,
@@ -150,9 +151,22 @@ export function App() {
     setActiveColorId((current) => (current === id ? null : current));
   };
 
-  const savePalette = (name: string) => {
+  const savePalette = async (name: string) => {
     if (workingColors.length === 0) {
       return false;
+    }
+
+    let paletteArtwork: SavedPalette['artwork'];
+
+    if (artwork) {
+      try {
+        paletteArtwork = {
+          thumbnailDataUrl: await createArtworkThumbnail(artwork.dataUrl),
+          name: artwork.name,
+        };
+      } catch {
+        // Thumbnail is a nicety; save the palette without it.
+      }
     }
 
     const palette: SavedPalette = {
@@ -160,6 +174,7 @@ export function App() {
       name,
       colors: workingColors,
       createdAt: new Date().toISOString(),
+      artwork: paletteArtwork,
     };
     setSavedPalettes((current) => [palette, ...current]);
     return true;

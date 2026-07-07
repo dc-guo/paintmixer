@@ -36,7 +36,7 @@ type WorkspacePageProps = {
   onUpdateColor: (id: string, hex: string, position?: SampledColor['position']) => void;
   onSelectColor: (id: string) => void;
   onRemoveColor: (id: string) => void;
-  onSavePalette: (name: string) => boolean;
+  onSavePalette: (name: string) => Promise<boolean>;
   ownedPaintIds: string[];
   onToggleOwnedPaint: (id: string) => void;
 };
@@ -130,9 +130,9 @@ export function WorkspacePage({
     setJustSaved(false);
   }, [colors]);
 
-  const handleSave = (event: FormEvent) => {
+  const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    const saved = onSavePalette(paletteName.trim() || 'Untitled palette');
+    const saved = await onSavePalette(paletteName.trim() || 'Untitled palette');
 
     if (saved) {
       setJustSaved(true);
@@ -331,7 +331,7 @@ export function WorkspacePage({
 
           <article className="panel">
             <p className="eyebrow">Project record</p>
-            <form className="save-form" onSubmit={handleSave}>
+            <form className="save-form" onSubmit={(event) => void handleSave(event)}>
               <input
                 aria-label="Palette name"
                 onChange={(event) => setPaletteName(event.target.value)}
