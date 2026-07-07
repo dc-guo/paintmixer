@@ -93,6 +93,11 @@ function getSaturation(rgb: RGB) {
   return lightness > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
 }
 
+export function isLightColor(rgb: RGB) {
+  // Perceived luminance; decides whether overlaid text should be dark or light.
+  return (0.299 * clampChannel(rgb.r) + 0.587 * clampChannel(rgb.g) + 0.114 * clampChannel(rgb.b)) / 255 > 0.66;
+}
+
 export function getPrintViability(rgb: RGB): PrintViability {
   const saturation = getSaturation(rgb);
   const maxChannel = Math.max(rgb.r, rgb.g, rgb.b);

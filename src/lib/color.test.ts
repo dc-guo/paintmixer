@@ -4,10 +4,16 @@ import {
   formatCmyk,
   getPrintViability,
   hexToRgb,
+  isLightColor,
   normalizeHex,
   rgbToCmyk,
   rgbToHex,
 } from './color.js';
+
+test('isLightColor separates light and dark backgrounds', () => {
+  assert.equal(isLightColor({ r: 219, g: 216, b: 214 }), true);
+  assert.equal(isLightColor({ r: 78, g: 98, b: 106 }), false);
+});
 
 test('normalizeHex accepts three and six digit hex values', () => {
   assert.equal(normalizeHex('#abc'), '#AABBCC');

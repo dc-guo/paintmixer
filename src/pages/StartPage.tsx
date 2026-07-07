@@ -13,51 +13,38 @@ export function StartPage({ savedPalettes, onArtworkSelected, onManualColor }: S
 
   return (
     <div className="page">
-      <section className="hero" aria-labelledby="page-title">
-        <div>
-          <p className="eyebrow">PaintBridge</p>
-          <h1 id="page-title">Turn your digital colors into paint you can actually mix.</h1>
-          <p className="hero-copy">
-            Upload artwork, sample the colors that matter, and get approximate Liquitex BASICS
-            matches and starter mixes from the paints you already own. Everything runs locally in
-            your browser.
-          </p>
-        </div>
-        <aside className="disclaimer" aria-label="Approximation disclaimer">
-          <strong>Approximation note</strong>
-          <p>
-            PaintBridge does not provide exact paint formulas or guaranteed color matches. RGB,
-            CMYK, paint matching, and starter mixes are planning approximations — test a small
-            swatch first.
-          </p>
-        </aside>
-      </section>
+      <section className="start-hero" aria-labelledby="page-title">
+        <p className="eyebrow">Digital color · Acrylic paint</p>
+        <h1 id="page-title">
+          From screen to <em>mixable</em> paint.
+        </h1>
+        <p className="sub">
+          Match your artwork's colors to Liquitex BASICS and mix from paints you own.
+        </p>
 
-      <section className="start-actions" aria-label="Start a project">
-        <article className="panel">
-          <p className="eyebrow">Start here</p>
-          <h2>Upload your artwork</h2>
-          <p>The image stays in your browser — nothing is uploaded to a server.</p>
+        <div className="upload-wrap">
           <ImageUploader onSelect={onArtworkSelected} />
-        </article>
-        <article className="panel">
-          <p className="eyebrow">No image handy?</p>
-          <h2>Start from a hex color</h2>
-          <p>Add a color directly and jump straight into the workspace.</p>
-          <ManualColorInput onSubmit={onManualColor} submitLabel="Open in workspace" />
-        </article>
+        </div>
+
+        <details className="start-alt">
+          <summary>Or start from a hex color</summary>
+          <div className="start-manual">
+            <ManualColorInput onSubmit={onManualColor} submitLabel="Open workspace" />
+          </div>
+        </details>
+
+        <p className="disclaimer-line">Approximations, not formulas. Test a swatch first.</p>
       </section>
 
-      <section className="panel recent-panel" aria-label="Recent palettes">
-        <p className="eyebrow">Pick up where you left off</p>
-        <h2>Recent palettes</h2>
-        {recentPalettes.length > 0 ? (
+      {recentPalettes.length > 0 ? (
+        <section className="recent" aria-label="Recent palettes">
+          <p className="micro">Recent palettes</p>
           <ul className="recent-list">
             {recentPalettes.map((palette) => (
               <li key={palette.id}>
                 <a href="#/palettes">
                   <span aria-hidden className="recent-swatches">
-                    {palette.colors.slice(0, 6).map((color) => (
+                    {palette.colors.slice(0, 5).map((color) => (
                       <span
                         className="mini-swatch"
                         key={color.id}
@@ -70,12 +57,8 @@ export function StartPage({ savedPalettes, onArtworkSelected, onManualColor }: S
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="empty-state">
-            Palettes you save from the workspace will appear here for quick access.
-          </p>
-        )}
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

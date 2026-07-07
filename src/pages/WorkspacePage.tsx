@@ -4,7 +4,7 @@ import { ImageColorPicker } from '../components/ImageColorPicker';
 import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
-import { formatCmyk, formatRgb, getPrintViability, hexToRgb, rgbToCmyk } from '../lib/color';
+import { getPrintViability, hexToRgb, rgbToCmyk } from '../lib/color';
 import type { ColorSource, SampledColor } from '../types/palette';
 
 type Artwork = {
@@ -41,28 +41,28 @@ export function WorkspacePage({
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
 
+  const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
+  const activeRgb = activeColor ? hexToRgb(activeColor.hex) : null;
+  const activeCmyk = activeRgb ? rgbToCmyk(activeRgb) : null;
+  const viability = activeRgb ? getPrintViability(activeRgb) : null;
+
   const handleAutoGenerate = async () => {
     setIsAutoGenerating(true);
     const added = await onAutoGenerate();
     setIsAutoGenerating(false);
     setAutoMessage(
       added > 0
-        ? `Added ${added} color${added === 1 ? '' : 's'} from your artwork.`
-        : 'No new colors found — the dominant colors are already in your palette.',
+        ? `Added ${added} color${added === 1 ? '' : 's'}.`
+        : 'The dominant colors are already here.',
     );
   };
-
-  const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
-  const activeRgb = activeColor ? hexToRgb(activeColor.hex) : null;
-  const activeCmyk = activeRgb ? rgbToCmyk(activeRgb) : null;
-  const viability = activeRgb ? getPrintViability(activeRgb) : null;
 
   const handleSave = (event: FormEvent) => {
     event.preventDefault();
     const saved = onSavePalette(paletteName.trim() || 'Untitled palette');
 
     if (saved) {
-      setSaveMessage('Palette saved.');
+      setSaveMessage('Saved.');
       setPaletteName('');
     }
   };
@@ -71,121 +71,90 @@ export function WorkspacePage({
     <div className="page">
       <div className="workspace-columns">
         <section className="workspace-column" aria-label="Artwork and working palette">
-          <article className="panel">
-            <p className="eyebrow">Artwork</p>
-            {artwork ? (
-              <>
-                <h2 className="artwork-title">{artwork.name}</h2>
-                <p className="field-help">
-                  Click or tap an area of the artwork to sample its color.
-                </p>
-                <ImageColorPicker
-                  dataUrl={artwork.dataUrl}
-                  onSample={(hex) => onAddColor(hex, 'image')}
-                />
-              </>
-            ) : (
-              <>
-                <h2>No artwork yet</h2>
-                <p className="field-help">
-                  Upload an image to sample colors from it, or add colors by hex below.
-                </p>
-                <ImageUploader onSelect={onArtworkSelected} />
-              </>
-            )}
-          </article>
+          {artwork ? (
+            <ImageColorPicker
+              dataUrl={artwork.dataUrl}
+              onSample={(hex) => onAddColor(hex, 'image')}
+            />
+          ) : (
+            <div className="panel">
+              <p className="eyebrow">Artwork</p>
+              <ImageUploader onSelect={onArtworkSelected} />
+            </div>
+          )}
 
-          <article className="panel">
-            <p className="eyebrow">Working palette</p>
-            <h2>Sampled colors</h2>
+          <div>
             <WorkingPaletteStrip
               activeColorId={activeColorId}
               colors={colors}
               onRemove={onRemoveColor}
               onSelect={onSelectColor}
             />
-            {artwork ? (
-              <>
+            <div className="strip-caption">
+              <span className="micro">
+                Working palette · {colors.length}
+              </span>
+              {artwork ? (
                 <button
-                  className="secondary-button"
+                  className="text-link"
                   disabled={isAutoGenerating}
                   onClick={() => void handleAutoGenerate()}
                   type="button"
                 >
-                  {isAutoGenerating ? 'Generating…' : 'Auto-generate palette from artwork'}
+                  {isAutoGenerating ? 'Generating…' : 'Re-generate'}
                 </button>
-                {autoMessage ? (
-                  <p className="field-help" role="status">
-                    {autoMessage}
-                  </p>
-                ) : null}
-              </>
+              ) : null}
+            </div>
+            {autoMessage ? (
+              <p className="quiet-note" role="status">
+                {autoMessage}
+              </p>
             ) : null}
             <details className="manual-add">
               <summary>Add a color by hex</summary>
               <ManualColorInput onSubmit={(hex) => onAddColor(hex, 'manual')} />
             </details>
-          </article>
+          </div>
         </section>
 
         <aside className="workspace-column" aria-label="Color inspector">
           <article className="panel">
             <p className="eyebrow">Selected color</p>
-            <h2>Target color details</h2>
-            {activeColor && activeRgb ? (
+            {activeColor && activeRgb && activeCmyk && viability ? (
               <>
-                <div
-                  aria-label={`Selected color ${activeColor.hex}`}
-                  className="active-swatch"
-                  style={{ backgroundColor: activeColor.hex }}
-                />
-                <dl className="color-values">
+                <div className="target-head">
+                  <div
+                    aria-label={`Selected color ${activeColor.hex}`}
+                    className="target-chip"
+                    style={{ backgroundColor: activeColor.hex }}
+                  />
                   <div>
-                    <dt>Hex</dt>
-                    <dd>{activeColor.hex}</dd>
+                    <h2 className="target-name">{activeColor.hex}</h2>
+                    <p className="target-from">
+                      {activeColor.source === 'manual' ? 'entered by hex' : 'from artwork'}
+                    </p>
                   </div>
+                </div>
+                <dl className="color-values">
                   <div>
                     <dt>RGB</dt>
-                    <dd>{formatRgb(activeRgb)}</dd>
+                    <dd>{`${activeRgb.r} · ${activeRgb.g} · ${activeRgb.b}`}</dd>
+                  </div>
+                  <div>
+                    <dt>CMYK ≈</dt>
+                    <dd>{`${activeCmyk.c} · ${activeCmyk.m} · ${activeCmyk.y} · ${activeCmyk.k}`}</dd>
                   </div>
                 </dl>
+                <span className="outlook">{viability.status}</span>
               </>
             ) : (
-              <p className="empty-state">
-                Sample a color from the artwork (or select one in the working palette) to inspect
-                it.
-              </p>
+              <p className="empty-state">Sample the artwork or add a hex color.</p>
             )}
           </article>
 
           <article className="panel">
-            <p className="eyebrow">Approximate conversion</p>
-            <h2>RGB/CMYK viability</h2>
-            {activeCmyk && viability ? (
-              <>
-                <dl className="color-values">
-                  <div>
-                    <dt>Approximate CMYK</dt>
-                    <dd>{formatCmyk(activeCmyk)}</dd>
-                  </div>
-                  <div>
-                    <dt>Print/paint outlook</dt>
-                    <dd>{viability.status}</dd>
-                  </div>
-                </dl>
-                <p className="viability-note">{viability.explanation}</p>
-              </>
-            ) : (
-              <p className="empty-state">Select a color to see approximate CMYK values.</p>
-            )}
-          </article>
-
-          <article className="panel">
-            <p className="eyebrow">Paint suggestions</p>
-            <h2>Liquitex BASICS matches</h2>
-            <p className="empty-state">
-              Closest paint matches arrive with the paint library (next milestone).
-            </p>
+            <p className="eyebrow">Closest Liquitex BASICS</p>
+            <p className="empty-state">Matches arrive with the paint library.</p>
             <button
               className="secondary-button"
               onClick={() => setIsInventoryOpen(true)}
@@ -196,35 +165,25 @@ export function WorkspacePage({
           </article>
 
           <article className="panel">
-            <p className="eyebrow">First attempt</p>
-            <h2>Starter mix</h2>
-            <p className="empty-state">
-              Approximate starter mixes will use your owned paints once the mix engine lands.
-            </p>
+            <p className="eyebrow">Starter mix</p>
+            <p className="empty-state">Mixes will use your owned paints once the engine lands.</p>
           </article>
 
           <article className="panel">
             <p className="eyebrow">Project record</p>
-            <h2>Save this palette</h2>
             <form className="save-form" onSubmit={handleSave}>
-              <label className="field-label" htmlFor="palette-name">
-                Palette name
-              </label>
               <input
-                id="palette-name"
+                aria-label="Palette name"
                 onChange={(event) => setPaletteName(event.target.value)}
-                placeholder="e.g. Sunset study"
+                placeholder="Palette name"
                 value={paletteName}
               />
               <button className="primary-button" disabled={colors.length === 0} type="submit">
                 Save palette
               </button>
             </form>
-            {colors.length === 0 ? (
-              <p className="field-help">Add at least one color to save a palette.</p>
-            ) : null}
             {saveMessage ? (
-              <p className="field-help" role="status">
+              <p className="quiet-note" role="status">
                 {saveMessage} <a href="#/palettes">View saved palettes</a>
               </p>
             ) : null}
@@ -251,8 +210,8 @@ export function WorkspacePage({
               </button>
             </header>
             <p className="empty-state">
-              The Liquitex BASICS paint library lands in the next milestone. You will mark the
-              paints you own here, and matches and starter mixes will use only those paints.
+              The Liquitex BASICS library lands next. You will mark owned paints here; matches and
+              mixes will use only those.
             </p>
           </aside>
         </div>

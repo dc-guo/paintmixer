@@ -57,8 +57,8 @@ export function ImageUploader({ onSelect }: ImageUploaderProps) {
         onDrop={handleDrop}
         type="button"
       >
-        <strong>Drop artwork here</strong>
-        <span>or click to browse — PNG, JPG, or WebP</span>
+        <strong>Drop artwork</strong>
+        <span>png · jpg · webp — stays local</span>
       </button>
       <input
         accept={ACCEPTED_TYPES.join(',')}

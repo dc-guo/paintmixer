@@ -1,3 +1,4 @@
+import { hexToRgb, isLightColor } from '../lib/color';
 import type { SampledColor } from '../types/palette';
 
 type WorkingPaletteStripProps = {
@@ -14,39 +15,37 @@ export function WorkingPaletteStrip({
   onRemove,
 }: WorkingPaletteStripProps) {
   if (colors.length === 0) {
-    return (
-      <p className="empty-state">
-        Click the artwork (or add a hex color) to start building a palette.
-      </p>
-    );
+    return <p className="empty-state">Click the artwork or add a hex color to begin.</p>;
   }
 
   return (
-    <ul className="palette-strip">
-      {colors.map((color) => (
-        <li
-          className={color.id === activeColorId ? 'palette-chip active' : 'palette-chip'}
-          key={color.id}
-        >
-          <button
-            aria-pressed={color.id === activeColorId}
-            className="palette-chip-body"
-            onClick={() => onSelect(color.id)}
-            type="button"
-          >
-            <span aria-hidden className="mini-swatch" style={{ backgroundColor: color.hex }} />
-            <span className="palette-chip-hex">{color.hex}</span>
-          </button>
-          <button
-            aria-label={`Remove ${color.hex} from working palette`}
-            className="palette-chip-remove"
-            onClick={() => onRemove(color.id)}
-            type="button"
-          >
-            ×
-          </button>
-        </li>
-      ))}
+    <ul className="swatch-grid">
+      {colors.map((color) => {
+        const rgb = hexToRgb(color.hex);
+        const light = rgb ? isLightColor(rgb) : true;
+
+        return (
+          <li key={color.id}>
+            <button
+              aria-pressed={color.id === activeColorId}
+              className={color.id === activeColorId ? 'swatch active' : 'swatch'}
+              onClick={() => onSelect(color.id)}
+              style={{ backgroundColor: color.hex }}
+              type="button"
+            >
+              <span className={light ? 'on-light' : 'on-dark'}>{color.hex}</span>
+            </button>
+            <button
+              aria-label={`Remove ${color.hex}`}
+              className="swatch-remove"
+              onClick={() => onRemove(color.id)}
+              type="button"
+            >
+              ×
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

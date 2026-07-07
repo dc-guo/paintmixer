@@ -12,6 +12,7 @@ export function ManualColorInput({ onSubmit, submitLabel = 'Add color' }: Manual
   const [value, setValue] = useState('#386D5F');
   const [showError, setShowError] = useState(false);
   const normalized = normalizeHex(value);
+  const hasError = !normalized && showError;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -28,11 +29,11 @@ export function ManualColorInput({ onSubmit, submitLabel = 'Add color' }: Manual
   return (
     <form className="manual-color-form" onSubmit={handleSubmit}>
       <label className="field-label" htmlFor={inputId}>
-        Enter a hex color
+        Hex color
       </label>
       <div className="hex-input-row">
         <input
-          aria-describedby={`${inputId}-help`}
+          aria-describedby={hasError ? `${inputId}-help` : undefined}
           id={inputId}
           onChange={(event) => {
             setValue(event.target.value);
@@ -45,17 +46,14 @@ export function ManualColorInput({ onSubmit, submitLabel = 'Add color' }: Manual
         <div
           aria-label={normalized ? `Color preview ${normalized}` : 'Invalid color preview'}
           className="color-swatch"
-          style={{ backgroundColor: normalized ?? '#F3EFE8' }}
+          style={{ backgroundColor: normalized ?? '#F4F4F2' }}
         />
       </div>
-      <p
-        className={!normalized && showError ? 'field-help error' : 'field-help'}
-        id={`${inputId}-help`}
-      >
-        {!normalized && showError
-          ? 'Enter a valid 3- or 6-digit hex color, such as #386D5F.'
-          : 'Colors are handled locally in your browser.'}
-      </p>
+      {hasError ? (
+        <p className="field-help error" id={`${inputId}-help`}>
+          Enter a 3- or 6-digit hex color, like #386D5F.
+        </p>
+      ) : null}
       <button className="primary-button" type="submit">
         {submitLabel}
       </button>
