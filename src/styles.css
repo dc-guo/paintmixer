@@ -1138,6 +1138,9 @@ h3 {
 }
 
 .mix-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 40px;
   margin: 4px 0 0;
   padding: 0;
   list-style: none;
@@ -1157,8 +1160,23 @@ h3 {
   cursor: pointer;
 }
 
-.mix-rows li:last-child .mix-row {
-  border-bottom: none;
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.save-confirm {
+  color: var(--accent);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.save-confirm a {
+  color: inherit;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--ink-faint);
 }
 
 .mix-row:hover .mix-row-hex {
@@ -1249,6 +1267,10 @@ h3 {
   }
 
   .palette-lower {
+    grid-template-columns: 1fr;
+  }
+
+  .mix-rows {
     grid-template-columns: 1fr;
   }
 

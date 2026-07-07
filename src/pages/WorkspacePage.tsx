@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ImageColorPicker } from '../components/ImageColorPicker';
 import { ImageUploader } from '../components/ImageUploader';
@@ -56,7 +56,7 @@ export function WorkspacePage({
   onToggleOwnedPaint,
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState('');
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
@@ -125,12 +125,18 @@ export function WorkspacePage({
     );
   };
 
+  // The confirmation describes the palette as saved, so clear it as soon as
+  // the working palette diverges from what was saved.
+  useEffect(() => {
+    setJustSaved(false);
+  }, [colors]);
+
   const handleSave = (event: FormEvent) => {
     event.preventDefault();
     const saved = onSavePalette(paletteName.trim() || 'Untitled palette');
 
     if (saved) {
-      setSaveMessage('Saved.');
+      setJustSaved(true);
       setPaletteName('');
     }
   };
@@ -338,15 +344,17 @@ export function WorkspacePage({
                 placeholder="Palette name"
                 value={paletteName}
               />
-              <button className="primary-button" disabled={colors.length === 0} type="submit">
-                Save palette
-              </button>
+              <div className="save-row">
+                <button className="primary-button" disabled={colors.length === 0} type="submit">
+                  Save palette
+                </button>
+                {justSaved ? (
+                  <span className="save-confirm" role="status">
+                    ✓ Saved — <a href="#/palettes">view</a>
+                  </span>
+                ) : null}
+              </div>
             </form>
-            {saveMessage ? (
-              <p className="quiet-note" role="status">
-                {saveMessage} <a href="#/palettes">View saved palettes</a>
-              </p>
-            ) : null}
           </article>
         </aside>
       </div>
