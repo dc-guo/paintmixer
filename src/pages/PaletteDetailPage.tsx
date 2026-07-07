@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { liquitexBasics } from '../data/liquitexBasics';
-import { hexToRgb, isLightColor, rgbToCmyk } from '../lib/color';
+import { hexToRgb, isLightColor } from '../lib/color';
 import { aggregatePaintUsage } from '../lib/paintUsage';
 import type { PaintUsage } from '../lib/paintUsage';
 import { suggestMixes } from '../lib/recipeEngine';
@@ -176,7 +176,6 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
         <ul className="color-blocks">
           {items.map(({ color }) => {
             const rgb = hexToRgb(color.hex);
-            const cmyk = rgb ? rgbToCmyk(rgb) : null;
             const light = rgb ? isLightColor(rgb) : true;
 
             return (
@@ -192,12 +191,6 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
                       <span className="spec">
                         <span className="k">RGB</span>
                         <span className="v">{`${rgb.r} · ${rgb.g} · ${rgb.b}`}</span>
-                      </span>
-                    ) : null}
-                    {cmyk ? (
-                      <span className="spec">
-                        <span className="k">CMYK</span>
-                        <span className="v">{`${cmyk.c} · ${cmyk.m} · ${cmyk.y} · ${cmyk.k}`}</span>
                       </span>
                     ) : null}
                   </span>

@@ -1045,16 +1045,11 @@ h3 {
 .specs {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-
-.spec {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  gap: 7px;
 }
 
 .spec .k {
+  display: block;
   font-family: var(--sans);
   font-size: 0.56rem;
   letter-spacing: 0.2em;

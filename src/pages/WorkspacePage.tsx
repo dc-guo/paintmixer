@@ -5,7 +5,7 @@ import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
-import { getPrintViability, hexToRgb, rgbToCmyk } from '../lib/color';
+import { getPrintViability, hexToRgb } from '../lib/color';
 import { matchPaints } from '../lib/paintMatching';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { ColorSource, SampledColor } from '../types/palette';
@@ -66,7 +66,6 @@ export function WorkspacePage({
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
   const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
   const inspectedRgb = inspectedHex ? hexToRgb(inspectedHex) : null;
-  const inspectedCmyk = inspectedRgb ? rgbToCmyk(inspectedRgb) : null;
   const viability = inspectedRgb ? getPrintViability(inspectedRgb) : null;
 
   const matches = useMemo(
@@ -205,7 +204,7 @@ export function WorkspacePage({
         <aside className="workspace-column" aria-label="Color inspector">
           <article className="panel">
             <p className="eyebrow">Selected color</p>
-            {inspectedHex && inspectedRgb && inspectedCmyk && viability ? (
+            {inspectedHex && inspectedRgb && viability ? (
               <>
                 <div className="target-head">
                   <div
@@ -222,10 +221,6 @@ export function WorkspacePage({
                   <div>
                     <dt>RGB</dt>
                     <dd>{`${inspectedRgb.r} · ${inspectedRgb.g} · ${inspectedRgb.b}`}</dd>
-                  </div>
-                  <div>
-                    <dt>CMYK ≈</dt>
-                    <dd>{`${inspectedCmyk.c} · ${inspectedCmyk.m} · ${inspectedCmyk.y} · ${inspectedCmyk.k}`}</dd>
                   </div>
                 </dl>
                 <span className="outlook">{viability.status}</span>
