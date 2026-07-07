@@ -1025,9 +1025,9 @@ h3 {
   flex: 1;
   flex-direction: column;
   justify-content: space-between;
-  gap: 22px;
-  min-height: 165px;
-  padding: 16px 14px 14px;
+  gap: 16px;
+  min-height: 140px;
+  padding: 14px 14px 12px;
   border: none;
   font-family: inherit;
   text-align: left;
@@ -1045,11 +1045,16 @@ h3 {
 .specs {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 3px;
+}
+
+.spec {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .spec .k {
-  display: block;
   font-family: var(--sans);
   font-size: 0.56rem;
   letter-spacing: 0.2em;

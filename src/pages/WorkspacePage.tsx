@@ -262,7 +262,6 @@ export function WorkspacePage({
                     <span className="match-name">
                       <span className="n">{match.paint.name}</span>
                       <span className="d">
-                        ΔE ≈ {Math.round(match.deltaE)} ·{' '}
                         {ownedPaintIds.includes(match.paint.id) ? (
                           <span className="owned-mark">owned</span>
                         ) : (
@@ -325,7 +324,7 @@ export function WorkspacePage({
                 </div>
                 <div className="mix-labels">
                   <span className="micro">Target</span>
-                  <span className="micro">Likely mix · ΔE ≈ {Math.round(bestRecipe.deltaE)}</span>
+                  <span className="micro">Likely mix</span>
                 </div>
                 {bestRecipe.notes.length > 0 ? (
                   <p className="quiet-note">{bestRecipe.notes.join(' ')}</p>

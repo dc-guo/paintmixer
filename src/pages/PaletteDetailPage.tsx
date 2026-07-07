@@ -237,7 +237,7 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
                       </span>
                       {recipe ? (
                         <span className={`match-tag ${CONFIDENCE_LABEL[recipe.confidence]}`}>
-                          ΔE ≈ {Math.round(recipe.deltaE)}
+                          {CONFIDENCE_LABEL[recipe.confidence]}
                         </span>
                       ) : null}
                     </button>
@@ -287,7 +287,6 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
                 />
                 <div>
                   <h2 className="target-name">{activeItem.color.hex}</h2>
-                  <p className="target-from">how to mix</p>
                 </div>
               </div>
               <button
@@ -323,9 +322,7 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
                 </div>
                 <div className="mix-labels">
                   <span className="micro">Target</span>
-                  <span className="micro">
-                    Likely mix · ΔE ≈ {Math.round(activeItem.recipe.deltaE)}
-                  </span>
+                  <span className="micro">Likely mix</span>
                 </div>
                 {activeItem.recipe.notes.length > 0 ? (
                   <p className="quiet-note">{activeItem.recipe.notes.join(' ')}</p>
