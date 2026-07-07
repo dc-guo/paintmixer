@@ -77,9 +77,27 @@ test('suggestMixes keeps recipes simple and measurable', () => {
     assert.ok(recipe.ingredients.length <= 3, 'at most three ingredients');
 
     for (const ingredient of recipe.ingredients) {
-      assert.ok(ingredient.parts >= 1 && ingredient.parts <= 6, 'parts stay within 1–6');
+      assert.ok(ingredient.parts >= 1 && ingredient.parts <= 12, 'parts stay within 1–12');
     }
   }
+});
+
+test('pale tints are never answered with plain white', () => {
+  // A pink target must carry its hue even when the exact lightness is out
+  // of reach — recommending white alone would be a lie.
+  const target = hexToRgb('#F0D8D8');
+  assert.ok(target);
+  const recipes = suggestMixes(target, [white, black, red, blue, yellow], 3);
+  const best = recipes[0];
+
+  assert.ok(
+    best.ingredients.some(
+      (ingredient) => !['titanium-white', 'mars-black'].includes(ingredient.paintId),
+    ),
+    `recipe should include a chromatic paint, got: ${best.ingredients
+      .map((ingredient) => ingredient.paintId)
+      .join(', ')}`,
+  );
 });
 
 test('suggestMixes returns distinct paint sets, best first', () => {

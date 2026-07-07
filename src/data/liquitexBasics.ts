@@ -29,9 +29,9 @@ type SeedPaint = {
 
 const SEED: SeedPaint[] = [
   // Whites & near-whites
-  { id: 'titanium-white', tintingStrength: 0.7, name: 'Titanium White', hex: '#F4F4F0', opacity: 'opaque', pigmentNotes: 'PW6' },
-  { id: 'unbleached-titanium', tintingStrength: 0.7, name: 'Unbleached Titanium', hex: '#E6DCC3', opacity: 'opaque' },
-  { id: 'parchment', tintingStrength: 0.7, name: 'Parchment', hex: '#EFE8D5', opacity: 'semi-opaque' },
+  { id: 'titanium-white', tintingStrength: 1.5, name: 'Titanium White', hex: '#F4F4F0', opacity: 'opaque', pigmentNotes: 'PW6' },
+  { id: 'unbleached-titanium', tintingStrength: 1.2, name: 'Unbleached Titanium', hex: '#E6DCC3', opacity: 'opaque' },
+  { id: 'parchment', tintingStrength: 1.2, name: 'Parchment', hex: '#EFE8D5', opacity: 'semi-opaque' },
   { id: 'transparent-mixing-white', tintingStrength: 0.3, name: 'Transparent Mixing White', hex: '#F1F1EE', opacity: 'transparent', pigmentNotes: 'glazing white — thins color without hiding' },
 
   // Yellows
@@ -111,7 +111,7 @@ const SEED: SeedPaint[] = [
   { id: 'silver', name: 'Silver', hex: '#ACAEB1', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
   { id: 'copper', name: 'Copper', hex: '#B26946', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
   { id: 'bronze', name: 'Bronze', hex: '#8C6E3C', opacity: 'semi-opaque', pigmentNotes: 'metallic — sheen not representable on screen' },
-  { id: 'iridescent-white', tintingStrength: 0.7, name: 'Iridescent White', hex: '#EEEEE8', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
+  { id: 'iridescent-white', tintingStrength: 1.2, name: 'Iridescent White', hex: '#EEEEE8', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
   { id: 'iridescent-graphite', tintingStrength: 1.3, name: 'Iridescent Graphite', hex: '#4A4C4F', opacity: 'semi-opaque', pigmentNotes: 'iridescent — sheen not representable on screen' },
 
   // Fluorescents (glow exceeds sRGB; values are clipped stand-ins)

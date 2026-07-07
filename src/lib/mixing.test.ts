@@ -32,7 +32,7 @@ function linearAverage(entries: Array<{ paint: Paint; parts: number }>): RGB {
 }
 
 test('K/S conversion round-trips within the clamps', () => {
-  for (const linear of [0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.98]) {
+  for (const linear of [0.07, 0.1, 0.3, 0.5, 0.7, 0.9, 0.98]) {
     const roundTripped = ksToLinear(linearToKS(linear));
     assert.ok(Math.abs(roundTripped - linear) < 1e-9, `round-trip at ${linear}`);
   }
@@ -92,6 +92,24 @@ test('black dominates white far beyond its parts', () => {
   assert.ok(
     rgbToLab(km).l < rgbToLab(linear).l - 10,
     '1 part black in 6 parts white lands notably darker than the parts-weighted average',
+  );
+});
+
+test('an all-semi-transparent mix also warns about glazing', () => {
+  // Primary Red and Primary Blue are both rated semi-transparent; a mix of
+  // nothing but semi-transparents behaves like a glaze too.
+  const red = paint('primary-red');
+  const blue = paint('primary-blue');
+  const target = estimateMix([
+    { paint: red, parts: 3 },
+    { paint: blue, parts: 1 },
+  ]);
+  const recipes = suggestMixes(target, [red, blue], 1);
+
+  assert.ok(recipes.length > 0);
+  assert.ok(
+    recipes[0].notes.some((note) => note.includes('glaze')),
+    `expected a glaze note, got: ${recipes[0].notes.join(' / ')}`,
   );
 });
 

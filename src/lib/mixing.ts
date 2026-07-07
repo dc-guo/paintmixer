@@ -7,10 +7,11 @@
 // still an approximation, and the UI labels every result as such.
 //
 // Reflectance is clamped away from 0 so very dark paints produce large but
-// finite K/S. The floor is a tuning knob: lower means blacks dominate
-// mixtures more aggressively.
+// finite K/S. The floor is a tuning knob: lower means dark paints dominate
+// mixtures more aggressively. 0.06 keeps black believably dominant while
+// letting heavy white ratios actually tint colors toward pastels.
 
-const MIN_REFLECTANCE = 0.035;
+const MIN_REFLECTANCE = 0.06;
 const MAX_REFLECTANCE = 0.99;
 
 /** Linear reflectance (0–1) → K/S. */

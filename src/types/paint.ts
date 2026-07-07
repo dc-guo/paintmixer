@@ -16,9 +16,10 @@ export type Paint = {
   opacity?: PaintOpacity;
   pigmentNotes?: string;
   /**
-   * Rough relative tinting strength (1 = average). Strong tinters like
-   * phthalos and blacks overwhelm a mix; whites underperform their parts.
-   * Used only inside mix estimation, never shown to the user.
+   * Rough relative tinting strength (1 = average). Strong tinters —
+   * phthalos, blacks, and titanium white's heavy scattering — punch above
+   * their parts; glazing colors punch below. Used only inside mix
+   * estimation, never shown to the user.
    */
   tintingStrength?: number;
   /** Where the color value came from; every seed entry carries one. */

@@ -20,17 +20,23 @@ type Candidate = {
   score: number;
 };
 
-// Discrete ratios keep recipes practical to measure out (plan §9D).
+// Discrete ratios keep recipes practical to measure out (plan §9D). The
+// 8:1 and 12:1 ends exist for tints and shades — pastels and near-blacks
+// need far more base than a 6:1 cap allows.
 const PAIR_RATIOS: Array<[number, number]> = [
   [1, 1],
   [2, 1],
   [3, 1],
   [4, 1],
   [6, 1],
+  [8, 1],
+  [12, 1],
   [1, 2],
   [1, 3],
   [1, 4],
   [1, 6],
+  [1, 8],
+  [1, 12],
   [3, 2],
   [2, 3],
 ];
@@ -38,6 +44,13 @@ const THIRD_PARTS = [1, 2];
 const TOP_PAIRS_TO_EXTEND = 12;
 // Each extra ingredient must earn its keep by improving deltaE at least this much.
 const COMPLEXITY_PENALTY = 1.2;
+// Lab chroma below this reads as neutral (white/gray/black). True neutrals
+// sit under ~2; pale-but-clearly-tinted targets like a pastel pink sit
+// around 8-10, so the line is drawn low.
+const ACHROMATIC_CHROMA = 5;
+// A colorful target must never be answered with an all-neutral recipe:
+// "plain white" for a pink is a lie even when it is the nearest color.
+const HUELESS_PENALTY = 25;
 // Paints at least this light (Lab L) count as "white" for mixing advice.
 const WHITE_LIGHTNESS = 87;
 
@@ -132,18 +145,27 @@ function buildNotes(target: RGB, candidate: Candidate): string[] {
   }
 
   const totalParts = candidate.ingredients.reduce((sum, { parts }) => sum + parts, 0);
-  const transparentParts = candidate.ingredients
-    .filter(({ paint }) => paint.opacity === 'transparent')
-    .reduce((sum, { parts }) => sum + parts, 0);
+  // Semi-transparent paints count at half weight: a mix of nothing but
+  // semi-transparents still behaves like a glaze.
+  const glazeParts = candidate.ingredients.reduce((sum, { paint, parts }) => {
+    if (paint.opacity === 'transparent') {
+      return sum + parts;
+    }
 
-  if (transparentParts > 0) {
-    notes.push(
-      transparentParts / totalParts > 0.5
-        ? 'Mostly transparent paints — expect a glaze that shifts over what is underneath.'
-        : `${
-            candidate.ingredients.find(({ paint }) => paint.opacity === 'transparent')?.paint.name
-          } is transparent — expect shifts when layering.`,
-    );
+    if (paint.opacity === 'semi-transparent') {
+      return sum + parts / 2;
+    }
+
+    return sum;
+  }, 0);
+  const fullyTransparent = candidate.ingredients.find(
+    ({ paint }) => paint.opacity === 'transparent',
+  );
+
+  if (glazeParts / totalParts >= 0.5) {
+    notes.push('Mostly transparent paints — expect a glaze that shifts over what is underneath.');
+  } else if (fullyTransparent) {
+    notes.push(`${fullyTransparent.paint.name} is transparent — expect shifts when layering.`);
   }
 
   return notes.slice(0, 2);
@@ -173,11 +195,19 @@ export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3):
   // fixed target to Lab once and compute each paint's K/S + tinting weight
   // factor once up front.
   const targetLab = rgbToLab(target);
+  const targetChroma = Math.hypot(targetLab.a, targetLab.b);
   const ksById = new Map(
-    ownedPaints.map((paint) => [
-      paint.id,
-      { ks: paintKS(paint), tint: paint.tintingStrength ?? 1 },
-    ]),
+    ownedPaints.map((paint) => {
+      const lab = rgbToLab(paint.rgb);
+      return [
+        paint.id,
+        {
+          ks: paintKS(paint),
+          tint: paint.tintingStrength ?? 1,
+          achromatic: Math.hypot(lab.a, lab.b) < ACHROMATIC_CHROMA,
+        },
+      ];
+    }),
   );
 
   const makeCandidate = (ingredients: Ingredient[]): Candidate => {
@@ -191,12 +221,18 @@ export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3):
             }),
           );
     const deltaE = labDistance(targetLab, rgbToLab(estimated));
+    const hueless =
+      targetChroma > ACHROMATIC_CHROMA &&
+      ingredients.every(({ paint }) => ksById.get(paint.id)?.achromatic ?? false);
 
     return {
       ingredients,
       estimated,
       deltaE,
-      score: deltaE + COMPLEXITY_PENALTY * (ingredients.length - 1),
+      score:
+        deltaE +
+        COMPLEXITY_PENALTY * (ingredients.length - 1) +
+        (hueless ? HUELESS_PENALTY : 0),
     };
   };
 
