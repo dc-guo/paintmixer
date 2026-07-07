@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
-import type { MouseEvent, PointerEvent } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import { rgbToHex } from '../lib/color';
 
 export type MarkerInfo = {
   id: string;
+  hex: string;
   x: number;
   y: number;
   active: boolean;
@@ -55,7 +56,7 @@ export function ImageColorPicker({
     image.src = dataUrl;
   }, [dataUrl]);
 
-  const sampleAt = (clientX: number, clientY: number): Sample | null => {
+  const sampleAtFraction = (fx: number, fy: number): Sample | null => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d', { willReadFrequently: true });
 
@@ -63,9 +64,6 @@ export function ImageColorPicker({
       return null;
     }
 
-    const rect = canvas.getBoundingClientRect();
-    const fx = clampFraction((clientX - rect.left) / rect.width);
-    const fy = clampFraction((clientY - rect.top) / rect.height);
     const x = Math.min(canvas.width - 1, Math.floor(fx * canvas.width));
     const y = Math.min(canvas.height - 1, Math.floor(fy * canvas.height));
     const [r = 0, g = 0, b = 0] = context.getImageData(x, y, 1, 1).data;
@@ -73,8 +71,27 @@ export function ImageColorPicker({
     return { hex: rgbToHex({ r, g, b }), position: { x: fx, y: fy } };
   };
 
+  const sampleAtPoint = (clientX: number, clientY: number): Sample | null => {
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      return null;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+
+    if (rect.width === 0 || rect.height === 0) {
+      return null;
+    }
+
+    return sampleAtFraction(
+      clampFraction((clientX - rect.left) / rect.width),
+      clampFraction((clientY - rect.top) / rect.height),
+    );
+  };
+
   const handleCanvasClick = (event: MouseEvent<HTMLCanvasElement>) => {
-    const sample = sampleAt(event.clientX, event.clientY);
+    const sample = sampleAtPoint(event.clientX, event.clientY);
 
     if (sample) {
       onPreview(sample.hex, sample.position);
@@ -99,7 +116,7 @@ export function ImageColorPicker({
       return;
     }
 
-    const sample = sampleAt(event.clientX, event.clientY);
+    const sample = sampleAtPoint(event.clientX, event.clientY);
 
     if (sample) {
       onMarkerDrag(id, sample.hex, sample.position);
@@ -120,6 +137,31 @@ export function ImageColorPicker({
     }
   };
 
+  const handleMarkerKeyDown = (marker: MarkerInfo) => (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step = event.shiftKey ? 0.05 : 0.01;
+    const deltas: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    const delta = deltas[event.key];
+
+    if (!delta) {
+      return;
+    }
+
+    event.preventDefault();
+    const sample = sampleAtFraction(
+      clampFraction(marker.x + delta[0]),
+      clampFraction(marker.y + delta[1]),
+    );
+
+    if (sample) {
+      onMarkerDrag(marker.id, sample.hex, sample.position);
+    }
+  };
+
   return (
     <div className="artwork-frame">
       <canvas
@@ -131,9 +173,11 @@ export function ImageColorPicker({
       />
       {markers.map((marker) => (
         <button
-          aria-label={`Palette color marker. Drag to re-sample this color from the artwork.`}
+          aria-label={`Color marker ${marker.hex}. Drag, or use arrow keys to re-sample from the artwork.`}
           className={marker.active ? 'marker draggable active' : 'marker draggable'}
           key={marker.id}
+          onFocus={() => onMarkerSelect(marker.id)}
+          onKeyDown={handleMarkerKeyDown(marker)}
           onPointerCancel={handleMarkerPointerEnd(marker.id)}
           onPointerDown={handleMarkerPointerDown(marker.id)}
           onPointerMove={handleMarkerPointerMove(marker.id)}

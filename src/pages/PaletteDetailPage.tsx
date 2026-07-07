@@ -388,6 +388,7 @@ export function PaletteDetailPage({
                 </div>
               </div>
               <button
+                autoFocus
                 className="secondary-button"
                 onClick={() => setMixColorId(null)}
                 type="button"

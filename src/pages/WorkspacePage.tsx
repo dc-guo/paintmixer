@@ -133,6 +133,20 @@ export function WorkspacePage({
     setJustSaved(null);
   }, [colors]);
 
+  useEffect(() => {
+    if (!isInventoryOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsInventoryOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isInventoryOpen]);
+
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     const wasUpdate = Boolean(editingPaletteName);
@@ -156,6 +170,7 @@ export function WorkspacePage({
                 .filter((color) => color.position)
                 .map((color) => ({
                   id: color.id,
+                  hex: color.hex,
                   x: color.position?.x ?? 0,
                   y: color.position?.y ?? 0,
                   active: !preview && color.id === activeColorId,
@@ -381,6 +396,7 @@ export function WorkspacePage({
             </header>
             <input
               aria-label="Search paints"
+              autoFocus
               className="drawer-search"
               onChange={(event) => setPaintQuery(event.target.value)}
               placeholder="Search paints"

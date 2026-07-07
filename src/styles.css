@@ -873,6 +873,7 @@ h3 {
   align-items: center;
   gap: 20px;
   margin-top: 6px;
+  flex-wrap: wrap;
 }
 
 .usage-card svg {
@@ -1030,6 +1031,7 @@ h3 {
 .sheet-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .sheet-actions .secondary-button {
