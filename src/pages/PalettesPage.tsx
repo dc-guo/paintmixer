@@ -21,6 +21,9 @@ export function PalettesPage({ palettes }: PalettesPageProps) {
         {palettes.map((palette) => (
           <li key={palette.id}>
             <a className="gallery-card" href={`#/palettes/${palette.id}`}>
+              {palette.artwork ? (
+                <img alt="" className="gallery-thumb" src={palette.artwork.thumbnailDataUrl} />
+              ) : null}
               <span aria-hidden className="gallery-strip">
                 {palette.colors.map((color) => (
                   <span key={color.id} style={{ backgroundColor: color.hex }} />

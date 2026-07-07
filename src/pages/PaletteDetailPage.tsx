@@ -12,6 +12,8 @@ type PaletteDetailPageProps = {
   palette: SavedPalette | null;
   ownedPaintIds: string[];
   onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+  onEdit: (palette: SavedPalette) => void;
 };
 
 type PaletteItem = {
@@ -107,9 +109,17 @@ function UsageDonut({ usage }: { usage: PaintUsage[] }) {
   );
 }
 
-export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteDetailPageProps) {
+export function PaletteDetailPage({
+  palette,
+  ownedPaintIds,
+  onDelete,
+  onRename,
+  onEdit,
+}: PaletteDetailPageProps) {
   const [mixColorId, setMixColorId] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
 
   const ownedPaints = useMemo(
     () => liquitexBasics.filter((paint) => ownedPaintIds.includes(paint.id)),
@@ -172,7 +182,45 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
       <section className="panel">
         <div className="sheet-head">
           <div>
-            <h2 className="sheet-title">{palette.name}</h2>
+            {isRenaming ? (
+              <form
+                className="rename-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const trimmed = nameDraft.trim();
+
+                  if (trimmed) {
+                    onRename(palette.id, trimmed);
+                  }
+
+                  setIsRenaming(false);
+                }}
+              >
+                <input
+                  aria-label="Palette name"
+                  autoFocus
+                  onChange={(event) => setNameDraft(event.target.value)}
+                  value={nameDraft}
+                />
+                <button className="secondary-button" type="submit">
+                  Save
+                </button>
+              </form>
+            ) : (
+              <h2 className="sheet-title">
+                {palette.name}{' '}
+                <button
+                  className="text-link"
+                  onClick={() => {
+                    setNameDraft(palette.name);
+                    setIsRenaming(true);
+                  }}
+                  type="button"
+                >
+                  Rename
+                </button>
+              </h2>
+            )}
             <p className="sheet-meta">
               {new Date(palette.createdAt).toLocaleDateString(undefined, {
                 month: 'long',
@@ -201,6 +249,9 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
               type="button"
             >
               Copy summary
+            </button>
+            <button className="secondary-button" onClick={() => onEdit(palette)} type="button">
+              Edit in workspace
             </button>
             <button
               className="secondary-button"

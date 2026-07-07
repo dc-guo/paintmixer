@@ -52,6 +52,7 @@ export function App() {
   const [activeColorId, setActiveColorId] = useState<string | null>(null);
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(loadSavedPalettes);
   const [ownedPaintIds, setOwnedPaintIds] = useState<string[]>(loadOwnedPaintIds);
+  const [editingPaletteId, setEditingPaletteId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(routeFromHash());
@@ -116,10 +117,11 @@ export function App() {
   };
 
   const selectArtwork = (dataUrl: string, name: string) => {
-    // New artwork starts a fresh working palette.
+    // New artwork starts a fresh working palette and a fresh project.
     setArtwork({ dataUrl, name });
     setWorkingColors([]);
     setActiveColorId(null);
+    setEditingPaletteId(null);
 
     void (async () => {
       try {
@@ -169,6 +171,17 @@ export function App() {
       }
     }
 
+    if (editingPaletteId && savedPalettes.some((palette) => palette.id === editingPaletteId)) {
+      setSavedPalettes((current) =>
+        current.map((palette) =>
+          palette.id === editingPaletteId
+            ? { ...palette, name, colors: workingColors, artwork: paletteArtwork ?? palette.artwork }
+            : palette,
+        ),
+      );
+      return true;
+    }
+
     const palette: SavedPalette = {
       id: createId(),
       name,
@@ -177,7 +190,26 @@ export function App() {
       artwork: paletteArtwork,
     };
     setSavedPalettes((current) => [palette, ...current]);
+    setEditingPaletteId(palette.id);
     return true;
+  };
+
+  const renamePalette = (id: string, name: string) => {
+    setSavedPalettes((current) =>
+      current.map((palette) => (palette.id === id ? { ...palette, name } : palette)),
+    );
+  };
+
+  const editPalette = (palette: SavedPalette) => {
+    setEditingPaletteId(palette.id);
+    setArtwork(
+      palette.artwork
+        ? { dataUrl: palette.artwork.thumbnailDataUrl, name: palette.artwork.name }
+        : null,
+    );
+    setWorkingColors(palette.colors);
+    setActiveColorId(palette.colors[0]?.id ?? null);
+    navigate('workspace');
   };
 
   const deletePalette = (id: string) => {
@@ -226,6 +258,11 @@ export function App() {
             activeColorId={activeColorId}
             artwork={artwork}
             colors={workingColors}
+            editingPaletteName={
+              editingPaletteId
+                ? savedPalettes.find((palette) => palette.id === editingPaletteId)?.name ?? null
+                : null
+            }
             onAddColor={addColor}
             onUpdateColor={updateColor}
             onArtworkSelected={selectArtwork}
@@ -246,6 +283,8 @@ export function App() {
               deletePalette(id);
               navigate('palettes');
             }}
+            onEdit={editPalette}
+            onRename={renamePalette}
             ownedPaintIds={ownedPaintIds}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />

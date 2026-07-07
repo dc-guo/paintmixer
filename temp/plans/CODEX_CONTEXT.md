@@ -553,7 +553,9 @@ Layout follows the standard creator-tool convention: **canvas left (~60%), inspe
 
 Structure (updated 2026-07-07): Page 3 is a compact gallery of palette cards (swatch strip, name, meta). Clicking a card opens a per-palette detail page (`#/palettes/:id`) containing everything below. Clicking any color on the detail page opens a "how to mix" modal with exact step-by-step mixing instructions for that color.
 
-The detail page also shows the source artwork the palette was built from, stored as a downscaled local thumbnail (~480px JPEG) alongside the saved palette. Full-resolution artwork is never persisted (Guardrail 3); if localStorage quota is hit, thumbnails are dropped before color data.
+The detail page also shows the source artwork the palette was built from, stored as a downscaled local thumbnail (~480px JPEG) alongside the saved palette; gallery cards show the same thumbnail. Full-resolution artwork is never persisted (Guardrail 3); if localStorage quota is hit, thumbnails are dropped before color data.
+
+Saved palettes are editable (2026-07-07): inline rename on the detail page, and an "Edit in workspace" action that reloads the palette (stored thumbnail as the artwork, colors with their marker positions) into the workspace, where Save becomes "Update palette" and writes back to the same palette. A fresh save also enters editing mode so repeated saves update rather than duplicate; uploading new artwork starts a fresh project.
 
 - List of saved project palettes; each shows swatches, hex codes, closest matches, and starter mixes.
 - Aggregate paint usage chart: for a selected palette, show the proportion of each base Liquitex BASICS paint needed to mix all colors in that palette. Default to a pie chart when roughly 7 or fewer paints are involved; switch to a horizontal bar chart above that (pie charts become unreadable past ~7 slices).

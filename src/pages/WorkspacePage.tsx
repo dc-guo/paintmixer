@@ -26,6 +26,8 @@ type WorkspacePageProps = {
   artwork: Artwork | null;
   colors: SampledColor[];
   activeColorId: string | null;
+  /** Name of the saved palette being edited, or null when starting fresh. */
+  editingPaletteName: string | null;
   onArtworkSelected: (dataUrl: string, name: string) => void;
   onAutoGenerate: () => Promise<number>;
   onAddColor: (
@@ -45,6 +47,7 @@ export function WorkspacePage({
   artwork,
   colors,
   activeColorId,
+  editingPaletteName,
   onArtworkSelected,
   onAutoGenerate,
   onAddColor,
@@ -55,8 +58,8 @@ export function WorkspacePage({
   ownedPaintIds,
   onToggleOwnedPaint,
 }: WorkspacePageProps) {
-  const [paletteName, setPaletteName] = useState('');
-  const [justSaved, setJustSaved] = useState(false);
+  const [paletteName, setPaletteName] = useState(editingPaletteName ?? '');
+  const [justSaved, setJustSaved] = useState<'saved' | 'updated' | null>(null);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
@@ -127,16 +130,18 @@ export function WorkspacePage({
   // The confirmation describes the palette as saved, so clear it as soon as
   // the working palette diverges from what was saved.
   useEffect(() => {
-    setJustSaved(false);
+    setJustSaved(null);
   }, [colors]);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    const saved = await onSavePalette(paletteName.trim() || 'Untitled palette');
+    const wasUpdate = Boolean(editingPaletteName);
+    const saved = await onSavePalette(
+      paletteName.trim() || editingPaletteName || 'Untitled palette',
+    );
 
     if (saved) {
-      setJustSaved(true);
-      setPaletteName('');
+      setJustSaved(wasUpdate ? 'updated' : 'saved');
     }
   };
 
@@ -340,15 +345,18 @@ export function WorkspacePage({
               />
               <div className="save-row">
                 <button className="primary-button" disabled={colors.length === 0} type="submit">
-                  Save palette
+                  {editingPaletteName ? 'Update palette' : 'Save palette'}
                 </button>
                 {justSaved ? (
                   <span className="save-confirm" role="status">
-                    ✓ Saved — <a href="#/palettes">view</a>
+                    ✓ {justSaved === 'updated' ? 'Updated' : 'Saved'} — <a href="#/palettes">view</a>
                   </span>
                 ) : null}
               </div>
             </form>
+            {editingPaletteName && !justSaved ? (
+              <p className="quiet-note">Editing "{editingPaletteName}" — saving updates it.</p>
+            ) : null}
           </article>
         </aside>
       </div>
