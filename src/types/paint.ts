@@ -15,6 +15,8 @@ export type Paint = {
   rgb: RGB;
   opacity?: PaintOpacity;
   pigmentNotes?: string;
+  /** Where the color value came from; every seed entry carries one. */
+  sourceNote?: string;
 };
 
 export type PaintMatch = {
