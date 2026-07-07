@@ -13,6 +13,7 @@ import {
   persistOwnedPaintIds,
   persistSavedPalettes,
 } from './lib/storage';
+import type { MixRecipe } from './types/paint';
 import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
 type Page = 'start' | 'workspace' | 'palettes';
@@ -171,7 +172,37 @@ export function App() {
 
   const updateColor = (id: string, hex: string, position?: SampledColor['position']) => {
     setWorkingColors((current) =>
-      current.map((color) => (color.id === id ? { ...color, hex, position } : color)),
+      current.map((color) =>
+        color.id === id
+          ? // A re-sampled color invalidates any stored mix choice.
+            { ...color, hex, position, preferredRecipe: undefined }
+          : color,
+      ),
+    );
+  };
+
+  const setWorkingColorRecipe = (colorId: string, recipe: MixRecipe | null) => {
+    setWorkingColors((current) =>
+      current.map((color) =>
+        color.id === colorId ? { ...color, preferredRecipe: recipe ?? undefined } : color,
+      ),
+    );
+  };
+
+  const setPaletteColorRecipe = (paletteId: string, colorId: string, recipe: MixRecipe | null) => {
+    setSavedPalettes((current) =>
+      current.map((palette) =>
+        palette.id === paletteId
+          ? {
+              ...palette,
+              colors: palette.colors.map((color) =>
+                color.id === colorId
+                  ? { ...color, preferredRecipe: recipe ?? undefined }
+                  : color,
+              ),
+            }
+          : palette,
+      ),
     );
   };
 
@@ -306,6 +337,7 @@ export function App() {
             onRemoveColor={removeColor}
             onSavePalette={savePalette}
             onSelectColor={setActiveColorId}
+            onSetColorRecipe={setWorkingColorRecipe}
           />
         ) : null}
         {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}
@@ -317,6 +349,7 @@ export function App() {
             }}
             onEdit={editPalette}
             onRename={renamePalette}
+            onSetColorRecipe={setPaletteColorRecipe}
             ownedPaintIds={ownedPaintIds}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />

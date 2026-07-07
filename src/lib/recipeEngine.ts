@@ -8,10 +8,12 @@ import { confidenceForDistance } from './paintMatching.js';
 /** Shared with the summary layer so single-paint phrasing stays in sync. */
 export const NOTE_STRAIGHT_FROM_TUBE = 'Straight from the tube.';
 
-type Ingredient = {
+export type MixIngredient = {
   paint: Paint;
   parts: number;
 };
+
+type Ingredient = MixIngredient;
 
 type Candidate = {
   ingredients: Ingredient[];
@@ -184,6 +186,16 @@ function toRecipe(target: RGB, candidate: Candidate): MixRecipe {
     confidence: confidenceForDistance(candidate.deltaE),
     notes: buildNotes(target, candidate),
   };
+}
+
+/**
+ * Build a full recipe record for a user-chosen set of ingredients — used by
+ * the live ratio editor, where the parts come from the user, not the search.
+ */
+export function buildRecipe(target: RGB, ingredients: Ingredient[]): MixRecipe {
+  const estimated = estimateMix(ingredients);
+  const deltaE = labDistance(rgbToLab(target), rgbToLab(estimated));
+  return toRecipe(target, { ingredients, estimated, deltaE, score: deltaE });
 }
 
 export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3): MixRecipe[] {

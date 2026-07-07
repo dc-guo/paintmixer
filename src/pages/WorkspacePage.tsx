@@ -4,12 +4,14 @@ import { ImageColorPicker } from '../components/ImageColorPicker';
 import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
 import { MixComparison } from '../components/MixComparison';
+import { MixEditor } from '../components/MixEditor';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { formatRgb, getPrintViability, hexToRgb } from '../lib/color';
 import { CONFIDENCE_LABEL, matchPaints } from '../lib/paintMatching';
 import { suggestMixes } from '../lib/recipeEngine';
+import type { MixRecipe } from '../types/paint';
 import type { ColorSource, SampledColor } from '../types/palette';
 
 type Artwork = {
@@ -40,6 +42,7 @@ type WorkspacePageProps = {
   onSelectColor: (id: string) => void;
   onRemoveColor: (id: string) => void;
   onSavePalette: (name: string) => Promise<boolean>;
+  onSetColorRecipe: (colorId: string, recipe: MixRecipe | null) => void;
   ownedPaintIds: string[];
   onToggleOwnedPaint: (id: string) => void;
 };
@@ -56,6 +59,7 @@ export function WorkspacePage({
   onSelectColor,
   onRemoveColor,
   onSavePalette,
+  onSetColorRecipe,
   ownedPaintIds,
   onToggleOwnedPaint,
 }: WorkspacePageProps) {
@@ -97,10 +101,12 @@ export function WorkspacePage({
     [ownedPaintIds],
   );
 
-  const bestRecipe = useMemo(() => {
-    const rgb = deferredHex ? hexToRgb(deferredHex) : null;
+  // Preview colors aren't in the palette yet, so they get a read-only
+  // suggestion; palette colors get the full editor.
+  const previewRecipe = useMemo(() => {
+    const rgb = preview ? hexToRgb(preview.hex) : null;
     return rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
-  }, [deferredHex, ownedPaints]);
+  }, [preview, ownedPaints]);
 
   const inspectedLabel = preview
     ? 'previewing — not in palette'
@@ -325,22 +331,33 @@ export function WorkspacePage({
               <p className="empty-state">
                 Mark the paints you own ("Edit my paints" above) to get starter mixes.
               </p>
-            ) : !bestRecipe ? (
-              <p className="empty-state">No workable mix from your paints.</p>
-            ) : (
-              <>
-                <div className="mix-pills">
-                  {bestRecipe.ingredients.map((ingredient) => (
-                    <span className="mix-pill" key={ingredient.paintId}>
-                      <span className="parts">{ingredient.parts}</span>
-                      {ingredient.paintName}
-                    </span>
-                  ))}
-                </div>
-                <MixComparison recipe={bestRecipe} />
-                <span className="micro mix-foot">Approximate · test a swatch first</span>
-              </>
-            )}
+            ) : preview ? (
+              !previewRecipe ? (
+                <p className="empty-state">No workable mix from your paints.</p>
+              ) : (
+                <>
+                  <div className="mix-pills">
+                    {previewRecipe.ingredients.map((ingredient) => (
+                      <span className="mix-pill" key={ingredient.paintId}>
+                        <span className="parts">{ingredient.parts}</span>
+                        {ingredient.paintName}
+                      </span>
+                    ))}
+                  </div>
+                  <MixComparison recipe={previewRecipe} />
+                  <p className="quiet-note">Add the color to your palette to adjust this mix.</p>
+                  <span className="micro mix-foot">Approximate · test a swatch first</span>
+                </>
+              )
+            ) : activeColor ? (
+              <MixEditor
+                footnote="Approximate · test a swatch first"
+                onPreferredChange={(recipe) => onSetColorRecipe(activeColor.id, recipe)}
+                ownedPaints={ownedPaints}
+                preferred={activeColor.preferredRecipe ?? null}
+                targetHex={activeColor.hex}
+              />
+            ) : null}
           </article>
 
           <article className="panel">

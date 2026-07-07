@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Paint, PaintOpacity } from '../types/paint.js';
 import { hexToRgb } from './color.js';
-import { suggestMixes } from './recipeEngine.js';
+import { buildRecipe, suggestMixes } from './recipeEngine.js';
 
 function paint(id: string, name: string, hex: string, opacity?: PaintOpacity): Paint {
   return {
@@ -80,6 +80,28 @@ test('suggestMixes keeps recipes simple and measurable', () => {
       assert.ok(ingredient.parts >= 1 && ingredient.parts <= 12, 'parts stay within 1–12');
     }
   }
+});
+
+test('buildRecipe recomputes estimate, confidence, and notes for adjusted parts', () => {
+  const target = hexToRgb('#5E5E5E');
+  assert.ok(target);
+  const even = buildRecipe(target, [
+    { paint: white, parts: 1 },
+    { paint: black, parts: 1 },
+  ]);
+  const whiter = buildRecipe(target, [
+    { paint: white, parts: 12 },
+    { paint: black, parts: 1 },
+  ]);
+
+  assert.equal(even.targetHex, '#5E5E5E');
+  assert.notEqual(even.estimatedHex, whiter.estimatedHex, 'ratio change moves the estimate');
+
+  const evenRgb = hexToRgb(even.estimatedHex);
+  const whiterRgb = hexToRgb(whiter.estimatedHex);
+  assert.ok(evenRgb && whiterRgb);
+  assert.ok(whiterRgb.r > evenRgb.r, 'more white lightens the estimate');
+  assert.ok(['high', 'medium', 'low'].includes(whiter.confidence));
 });
 
 test('pale tints are never answered with plain white', () => {

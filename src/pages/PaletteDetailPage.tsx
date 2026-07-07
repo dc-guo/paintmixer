@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MixComparison } from '../components/MixComparison';
+import { MixEditor } from '../components/MixEditor';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { formatRgb, hexToRgb, isLightColor } from '../lib/color';
@@ -7,7 +7,7 @@ import { formatPaletteMeta } from '../lib/format';
 import { CONFIDENCE_LABEL } from '../lib/paintMatching';
 import { aggregatePaintUsage } from '../lib/paintUsage';
 import type { PaintUsage } from '../lib/paintUsage';
-import { buildPaletteSummary, mixSteps } from '../lib/paletteSummary';
+import { buildPaletteSummary } from '../lib/paletteSummary';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
@@ -18,6 +18,7 @@ type PaletteDetailPageProps = {
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onEdit: (palette: SavedPalette) => void;
+  onSetColorRecipe: (paletteId: string, colorId: string, recipe: MixRecipe | null) => void;
 };
 
 type PaletteItem = {
@@ -102,6 +103,7 @@ export function PaletteDetailPage({
   onDelete,
   onRename,
   onEdit,
+  onSetColorRecipe,
 }: PaletteDetailPageProps) {
   const [mixColorId, setMixColorId] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -116,6 +118,10 @@ export function PaletteDetailPage({
   const items = useMemo<PaletteItem[]>(
     () =>
       (palette?.colors ?? []).map((color) => {
+        if (color.preferredRecipe) {
+          return { color, recipe: color.preferredRecipe };
+        }
+
         const rgb = hexToRgb(color.hex);
         const recipe =
           rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
@@ -298,7 +304,7 @@ export function PaletteDetailPage({
                           {recipe
                             ? recipe.ingredients
                                 .map((ingredient) => `${ingredient.parts} ${ingredient.paintName}`)
-                                .join(' · ')
+                                .join(' · ') + (color.preferredRecipe ? ' · your mix' : '')
                             : 'no workable mix'}
                         </span>
                       </span>
@@ -366,20 +372,21 @@ export function PaletteDetailPage({
               </button>
             </header>
 
-            {activeItem.recipe ? (
-              <>
-                <ol className="mix-steps">
-                  {mixSteps(activeItem.recipe).map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-                <MixComparison recipe={activeItem.recipe} />
-                <span className="micro mix-foot">Approximate starter mix · test a swatch first</span>
-              </>
+            {ownedPaints.length > 0 ? (
+              <MixEditor
+                footnote="Approximate starter mix · test a swatch first"
+                onPreferredChange={(recipe) =>
+                  onSetColorRecipe(palette.id, activeItem.color.id, recipe)
+                }
+                ownedPaints={ownedPaints}
+                preferred={activeItem.color.preferredRecipe ?? null}
+                showSteps
+                targetHex={activeItem.color.hex}
+              />
             ) : (
               <p className="empty-state">
-                No workable mix from your current paints. Mark more owned paints in the{' '}
-                <a href="#/workspace">workspace</a>.
+                Mark the paints you own in the <a href="#/workspace">workspace</a> to get a mix for
+                this color.
               </p>
             )}
           </div>

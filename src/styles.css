@@ -802,12 +802,75 @@ h3 {
 .mix-pill .parts {
   display: grid;
   place-items: center;
-  width: 25px;
+  min-width: 25px;
   height: 25px;
   border-radius: 50%;
   background: var(--paper);
   font-style: italic;
   font-size: 0.8rem;
+}
+
+.parts-step {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  padding: 0;
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.parts-step:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mix-editor .mix-pill {
+  gap: 6px;
+  padding: 6px 14px 6px 6px;
+}
+
+.alt-mixes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.alt-mix {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: var(--card);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.alt-mix:hover {
+  border-color: var(--ink-faint);
+}
+
+.alt-mix.selected {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+}
+
+.alt-mix-names {
+  flex: 1;
+  min-width: 0;
 }
 
 .mix-compare {

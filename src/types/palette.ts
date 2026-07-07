@@ -1,3 +1,5 @@
+import type { MixRecipe } from './paint';
+
 export type ColorSource = 'image' | 'manual' | 'auto';
 
 export type SampledColor = {
@@ -6,6 +8,11 @@ export type SampledColor = {
   source: ColorSource;
   /** Fractions (0–1) of image width/height; absent for manual colors. */
   position?: { x: number; y: number };
+  /**
+   * The user's chosen or ratio-adjusted mix. When absent, the engine's live
+   * suggestion is used everywhere this color appears.
+   */
+  preferredRecipe?: MixRecipe;
 };
 
 export type SavedPalette = {
