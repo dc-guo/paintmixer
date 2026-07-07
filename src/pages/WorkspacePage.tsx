@@ -12,6 +12,11 @@ type Artwork = {
   name: string;
 };
 
+type Preview = {
+  hex: string;
+  position: { x: number; y: number };
+};
+
 type WorkspacePageProps = {
   artwork: Artwork | null;
   colors: SampledColor[];
@@ -23,6 +28,7 @@ type WorkspacePageProps = {
     source: ColorSource,
     position?: SampledColor['position'],
   ) => void;
+  onUpdateColor: (id: string, hex: string, position?: SampledColor['position']) => void;
   onSelectColor: (id: string) => void;
   onRemoveColor: (id: string) => void;
   onSavePalette: (name: string) => boolean;
@@ -35,6 +41,7 @@ export function WorkspacePage({
   onArtworkSelected,
   onAutoGenerate,
   onAddColor,
+  onUpdateColor,
   onSelectColor,
   onRemoveColor,
   onSavePalette,
@@ -44,11 +51,33 @@ export function WorkspacePage({
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [preview, setPreview] = useState<Preview | null>(null);
 
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
-  const activeRgb = activeColor ? hexToRgb(activeColor.hex) : null;
-  const activeCmyk = activeRgb ? rgbToCmyk(activeRgb) : null;
-  const viability = activeRgb ? getPrintViability(activeRgb) : null;
+  const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
+  const inspectedRgb = inspectedHex ? hexToRgb(inspectedHex) : null;
+  const inspectedCmyk = inspectedRgb ? rgbToCmyk(inspectedRgb) : null;
+  const viability = inspectedRgb ? getPrintViability(inspectedRgb) : null;
+
+  const inspectedLabel = preview
+    ? 'previewing — not in palette'
+    : activeColor?.source === 'manual'
+      ? 'entered by hex'
+      : 'from artwork';
+
+  const selectColor = (id: string) => {
+    setPreview(null);
+    onSelectColor(id);
+  };
+
+  const addPreviewToPalette = () => {
+    if (!preview) {
+      return;
+    }
+
+    onAddColor(preview.hex, 'image', preview.position);
+    setPreview(null);
+  };
 
   const handleAutoGenerate = async () => {
     setIsAutoGenerating(true);
@@ -76,25 +105,21 @@ export function WorkspacePage({
       <div className="workspace-columns">
         <section className="workspace-column" aria-label="Artwork and working palette">
           {artwork ? (
-            <div className="artwork-frame">
-              <ImageColorPicker
-                dataUrl={artwork.dataUrl}
-                onSample={(hex, position) => onAddColor(hex, 'image', position)}
-              />
-              {colors
+            <ImageColorPicker
+              dataUrl={artwork.dataUrl}
+              markers={colors
                 .filter((color) => color.position)
-                .map((color) => (
-                  <span
-                    aria-hidden
-                    className={color.id === activeColorId ? 'marker active' : 'marker'}
-                    key={color.id}
-                    style={{
-                      left: `${(color.position?.x ?? 0) * 100}%`,
-                      top: `${(color.position?.y ?? 0) * 100}%`,
-                    }}
-                  />
-                ))}
-            </div>
+                .map((color) => ({
+                  id: color.id,
+                  x: color.position?.x ?? 0,
+                  y: color.position?.y ?? 0,
+                  active: !preview && color.id === activeColorId,
+                }))}
+              onMarkerDrag={onUpdateColor}
+              onMarkerSelect={selectColor}
+              onPreview={(hex, position) => setPreview({ hex, position })}
+              preview={preview?.position ?? null}
+            />
           ) : (
             <div className="panel">
               <p className="eyebrow">Artwork</p>
@@ -104,10 +129,10 @@ export function WorkspacePage({
 
           <div>
             <WorkingPaletteStrip
-              activeColorId={activeColorId}
+              activeColorId={preview ? null : activeColorId}
               colors={colors}
               onRemove={onRemoveColor}
-              onSelect={onSelectColor}
+              onSelect={selectColor}
             />
             <div className="strip-caption">
               <span className="micro">
@@ -139,35 +164,46 @@ export function WorkspacePage({
         <aside className="workspace-column" aria-label="Color inspector">
           <article className="panel">
             <p className="eyebrow">Selected color</p>
-            {activeColor && activeRgb && activeCmyk && viability ? (
+            {inspectedHex && inspectedRgb && inspectedCmyk && viability ? (
               <>
                 <div className="target-head">
                   <div
-                    aria-label={`Selected color ${activeColor.hex}`}
+                    aria-label={`Selected color ${inspectedHex}`}
                     className="target-chip"
-                    style={{ backgroundColor: activeColor.hex }}
+                    style={{ backgroundColor: inspectedHex }}
                   />
                   <div>
-                    <h2 className="target-name">{activeColor.hex}</h2>
-                    <p className="target-from">
-                      {activeColor.source === 'manual' ? 'entered by hex' : 'from artwork'}
-                    </p>
+                    <h2 className="target-name">{inspectedHex}</h2>
+                    <p className="target-from">{inspectedLabel}</p>
                   </div>
                 </div>
                 <dl className="color-values">
                   <div>
                     <dt>RGB</dt>
-                    <dd>{`${activeRgb.r} · ${activeRgb.g} · ${activeRgb.b}`}</dd>
+                    <dd>{`${inspectedRgb.r} · ${inspectedRgb.g} · ${inspectedRgb.b}`}</dd>
                   </div>
                   <div>
                     <dt>CMYK ≈</dt>
-                    <dd>{`${activeCmyk.c} · ${activeCmyk.m} · ${activeCmyk.y} · ${activeCmyk.k}`}</dd>
+                    <dd>{`${inspectedCmyk.c} · ${inspectedCmyk.m} · ${inspectedCmyk.y} · ${inspectedCmyk.k}`}</dd>
                   </div>
                 </dl>
                 <span className="outlook">{viability.status}</span>
+                {preview ? (
+                  <div>
+                    <button
+                      className="secondary-button"
+                      onClick={addPreviewToPalette}
+                      type="button"
+                    >
+                      Add to palette
+                    </button>
+                  </div>
+                ) : null}
               </>
             ) : (
-              <p className="empty-state">Sample the artwork or add a hex color.</p>
+              <p className="empty-state">
+                Click the artwork to preview a color, or drag a marker to re-sample one.
+              </p>
             )}
           </article>
 

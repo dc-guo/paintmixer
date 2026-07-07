@@ -455,6 +455,8 @@ h3 {
   height: 22px;
   border: 2.5px solid rgba(255, 255, 255, 0.95);
   border-radius: 50%;
+  padding: 0;
+  background: transparent;
   box-shadow: 0 1px 6px rgba(40, 50, 56, 0.35);
   transform: translate(-50%, -50%);
   pointer-events: none;
@@ -463,6 +465,21 @@ h3 {
 .marker.active {
   width: 32px;
   height: 32px;
+}
+
+.marker.draggable {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.marker.draggable:active {
+  cursor: grabbing;
+}
+
+.marker.preview {
+  border-style: dashed;
+  border-width: 2px;
 }
 
 .swatch-grid {

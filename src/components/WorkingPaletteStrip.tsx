@@ -15,7 +15,7 @@ export function WorkingPaletteStrip({
   onRemove,
 }: WorkingPaletteStripProps) {
   if (colors.length === 0) {
-    return <p className="empty-state">Click the artwork or add a hex color to begin.</p>;
+    return <p className="empty-state">Re-generate from the artwork or add a color by hex.</p>;
   }
 
   return (

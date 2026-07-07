@@ -113,6 +113,12 @@ export function App() {
     })();
   };
 
+  const updateColor = (id: string, hex: string, position?: SampledColor['position']) => {
+    setWorkingColors((current) =>
+      current.map((color) => (color.id === id ? { ...color, hex, position } : color)),
+    );
+  };
+
   const removeColor = (id: string) => {
     setWorkingColors((current) => current.filter((color) => color.id !== id));
     setActiveColorId((current) => (current === id ? null : current));
@@ -176,6 +182,7 @@ export function App() {
             artwork={artwork}
             colors={workingColors}
             onAddColor={addColor}
+            onUpdateColor={updateColor}
             onArtworkSelected={selectArtwork}
             onAutoGenerate={() =>
               artwork ? autoGeneratePalette(artwork.dataUrl) : Promise.resolve(0)
