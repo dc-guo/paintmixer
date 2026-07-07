@@ -822,7 +822,7 @@ h3 {
 .output-pair .half {
   flex: 1;
   height: 38px;
-  border: 1px solid rgba(47, 50, 53, 0.06);
+  border: 1px solid rgba(47, 50, 53, 0.14);
   border-radius: 999px;
 }
 

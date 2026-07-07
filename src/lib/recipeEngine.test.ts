@@ -33,6 +33,23 @@ test('suggestMixes prefers a single paint when it matches exactly', () => {
   assert.equal(recipes[0].deltaE, 0);
   assert.equal(recipes[0].confidence, 'high');
   assert.ok(recipes[0].notes.includes('Straight from the tube.'));
+  assert.ok(
+    !recipes[0].notes.includes('Fold in the white gradually.'),
+    'no fold-in-white advice when white is the entire recipe',
+  );
+});
+
+test('suggestMixes explains when the target is out of reach of the paints', () => {
+  // Pure screen white is lighter than Titanium White paint (#F4F4F0).
+  const target = hexToRgb('#FFFFFF');
+  assert.ok(target);
+  const recipes = suggestMixes(target, [white, black], 1);
+
+  assert.equal(recipes[0].ingredients[0].paintId, 'titanium-white');
+  assert.ok(
+    recipes[0].notes.includes('The target is lighter than this mix will likely reach.'),
+    `expected a lightness note, got: ${recipes[0].notes.join(' / ')}`,
+  );
 });
 
 test('suggestMixes mixes white and black toward a mid gray', () => {

@@ -1,7 +1,7 @@
 import type { RGB } from '../types/color';
 import type { MixRecipe, Paint } from '../types/paint';
 import { getSaturation, rgbToHex } from './color.js';
-import { colorDistance, linearToSrgb, srgbToLinear } from './deltaE.js';
+import { colorDistance, linearToSrgb, rgbToLab, srgbToLinear } from './deltaE.js';
 import { confidenceForDistance } from './paintMatching.js';
 
 type Ingredient = {
@@ -81,13 +81,18 @@ function buildNotes(target: RGB, candidate: Candidate): string[] {
 
   if (candidate.ingredients.length === 1) {
     notes.push('Straight from the tube.');
-  }
-
-  if (candidate.ingredients.some(({ paint }) => paint.id === 'titanium-white')) {
+  } else if (candidate.ingredients.some(({ paint }) => paint.id === 'titanium-white')) {
+    // Only meaningful when white is being mixed INTO something.
     notes.push('Fold in the white gradually.');
   }
 
-  if (getSaturation(target) - getSaturation(candidate.estimated) > 0.15) {
+  const lightnessGap = rgbToLab(target).l - rgbToLab(candidate.estimated).l;
+
+  if (lightnessGap > 3) {
+    notes.push('The target is lighter than this mix will likely reach.');
+  } else if (lightnessGap < -3) {
+    notes.push('The target is darker than this mix will likely reach.');
+  } else if (getSaturation(target) - getSaturation(candidate.estimated) > 0.15) {
     notes.push('The target is more saturated than this mix will likely reach.');
   }
 
