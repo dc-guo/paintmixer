@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "rootDir": ".",
+    "outDir": "temp/test-dist"
+  },
+  "include": ["src/**/*.test.ts", "src/lib/**/*.ts", "src/testing/**/*.d.ts", "src/types/**/*.ts"]
+}
