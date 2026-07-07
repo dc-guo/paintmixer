@@ -1,19 +1,28 @@
 # PaintBridge
 
-PaintBridge is a demoable web app MVP for helping artists translate digital colors into approximate Liquitex BASICS acrylic paint decisions.
+Turn digital colors into acrylic paint you can actually mix.
 
-The app is intentionally local-first for the MVP: artwork uploads and future image processing happen in the browser, with no backend, auth, or cloud services.
+**Live site:** https://dc-guo.github.io/paintmixer/
 
-## Scripts
+Upload artwork, pull out its dominant colors with draggable sample markers, match each color to the closest Liquitex BASICS acrylics, and get starter mix recipes ("2 parts Titanium White + 1 part Payne's Gray") from the paints you own — plus a paint-usage chart and copyable mixing summary per saved palette.
 
-After installing Node.js and dependencies:
+Everything runs in your browser. Images are never uploaded to a server, and palettes and your paint inventory are stored locally.
+
+## Running locally
 
 ```bash
 npm install
-npm run dev
-npm run build
+npm run dev    # dev server
+npm test       # typecheck + unit tests
+npm run build  # production build
 ```
 
-## Accuracy Note
+## Accuracy note
 
-PaintBridge uses approximate RGB/CMYK and paint match guidance. It is a planning assistant, not an exact paint formulation or color-management system.
+PaintBridge is a planning assistant, not a color-management system. Paint color values are hand-approximated from swatch references, mix estimates use simplified color math, and every result should be tested with a small physical swatch first. Approximations, not formulas.
+
+Liquitex and Liquitex BASICS are trademarks of their respective owner. This project is not affiliated with or endorsed by Liquitex.
+
+## License
+
+Source is available for reference. All rights reserved.
