@@ -3,6 +3,7 @@ import { liquitexBasics } from '../data/liquitexBasics';
 import { hexToRgb, isLightColor } from '../lib/color';
 import { aggregatePaintUsage } from '../lib/paintUsage';
 import type { PaintUsage } from '../lib/paintUsage';
+import { buildPaletteSummary } from '../lib/paletteSummary';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
@@ -19,6 +20,30 @@ type PaletteItem = {
 };
 
 const CONFIDENCE_LABEL = { high: 'close', medium: 'fair', low: 'far' } as const;
+
+async function copyTextToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard API can be unavailable (permissions, insecure context);
+    // fall back to the legacy selection approach.
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      return copied;
+    } catch {
+      return false;
+    }
+  }
+}
 
 function mixSteps(recipe: MixRecipe): string[] {
   const sorted = [...recipe.ingredients].sort((a, b) => b.parts - a.parts);
@@ -84,6 +109,7 @@ function UsageDonut({ usage }: { usage: PaintUsage[] }) {
 
 export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteDetailPageProps) {
   const [mixColorId, setMixColorId] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const ownedPaints = useMemo(
     () => liquitexBasics.filter((paint) => ownedPaintIds.includes(paint.id)),
@@ -156,6 +182,26 @@ export function PaletteDetailPage({ palette, ownedPaintIds, onDelete }: PaletteD
             </p>
           </div>
           <div className="sheet-actions">
+            {copyState !== 'idle' ? (
+              <span className="save-confirm" role="status">
+                {copyState === 'copied' ? '✓ Copied' : 'Copy failed'}
+              </span>
+            ) : null}
+            <button
+              className="secondary-button"
+              onClick={() => {
+                void (async () => {
+                  const copied = await copyTextToClipboard(
+                    buildPaletteSummary(palette, items, usage),
+                  );
+                  setCopyState(copied ? 'copied' : 'failed');
+                  window.setTimeout(() => setCopyState('idle'), 2500);
+                })();
+              }}
+              type="button"
+            >
+              Copy summary
+            </button>
             <button
               className="secondary-button"
               onClick={() => exportPaletteAsJson(palette, items, usage)}
