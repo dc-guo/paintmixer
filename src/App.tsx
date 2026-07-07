@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PaletteDetailPage } from './pages/PaletteDetailPage';
 import { PalettesPage } from './pages/PalettesPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
+import type { ExtractedColor } from './lib/paletteExtraction';
 import { createArtworkThumbnail } from './lib/thumbnails';
 import {
   createId,
@@ -39,10 +40,24 @@ function routeFromHash(): Route {
   const detail = /^palettes\/(.+)$/.exec(hash);
 
   if (detail) {
-    return { page: 'palette', paletteId: decodeURIComponent(detail[1]) };
+    try {
+      return { page: 'palette', paletteId: decodeURIComponent(detail[1]) };
+    } catch {
+      // Malformed percent-encoding in a shared link; fall back to the gallery.
+      return { page: 'palettes' };
+    }
   }
 
   return { page: 'start' };
+}
+
+function toSampledColor(extracted: ExtractedColor): SampledColor {
+  return {
+    id: createId(),
+    hex: extracted.hex,
+    source: 'auto',
+    position: { x: extracted.x, y: extracted.y },
+  };
 }
 
 export function App() {
@@ -60,13 +75,25 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Skip the initial-mount runs: they would rewrite the just-loaded data
+  // (including base64 thumbnails) back to localStorage unchanged.
+  const hasHydrated = useRef(false);
+
   useEffect(() => {
-    persistSavedPalettes(savedPalettes);
+    if (hasHydrated.current) {
+      persistSavedPalettes(savedPalettes);
+    }
   }, [savedPalettes]);
 
   useEffect(() => {
-    persistOwnedPaintIds(ownedPaintIds);
+    if (hasHydrated.current) {
+      persistOwnedPaintIds(ownedPaintIds);
+    }
   }, [ownedPaintIds]);
+
+  useEffect(() => {
+    hasHydrated.current = true;
+  }, []);
 
   const toggleOwnedPaint = (id: string) => {
     setOwnedPaintIds((current) =>
@@ -85,20 +112,14 @@ export function App() {
     setActiveColorId(color.id);
   };
 
-  const autoGeneratePalette = async (dataUrl: string) => {
+  /** Returns the number of colors added, or null when extraction failed. */
+  const autoGeneratePalette = async (dataUrl: string): Promise<number | null> => {
     try {
       const extracted = await extractPaletteFromDataUrl(dataUrl, 5);
       const existing = new Set(workingColors.map((color) => color.hex));
       const fresh = extracted
         .filter((color) => !existing.has(color.hex))
-        .map(
-          (color): SampledColor => ({
-            id: createId(),
-            hex: color.hex,
-            source: 'auto',
-            position: { x: color.x, y: color.y },
-          }),
-        );
+        .map(toSampledColor);
 
       if (fresh.length === 0) {
         return 0;
@@ -111,8 +132,7 @@ export function App() {
       setActiveColorId((activeId) => activeId ?? fresh[0].id);
       return fresh.length;
     } catch {
-      // Extraction is a convenience; manual sampling still works if it fails.
-      return 0;
+      return null;
     }
   };
 
@@ -125,21 +145,28 @@ export function App() {
 
     void (async () => {
       try {
-        const extracted = await extractPaletteFromDataUrl(dataUrl, 5);
-        const fresh = extracted.map(
-          (color): SampledColor => ({
-            id: createId(),
-            hex: color.hex,
-            source: 'auto',
-            position: { x: color.x, y: color.y },
-          }),
-        );
-        setWorkingColors(fresh);
-        setActiveColorId(fresh[0]?.id ?? null);
+        const fresh = (await extractPaletteFromDataUrl(dataUrl, 5)).map(toSampledColor);
+
+        // Merge rather than replace: keep colors the user added while
+        // extraction was still running.
+        setWorkingColors((current) => {
+          const extractedHexes = new Set(fresh.map((color) => color.hex));
+          return [...fresh, ...current.filter((color) => !extractedHexes.has(color.hex))];
+        });
+        setActiveColorId((active) => active ?? fresh[0]?.id ?? null);
       } catch {
         // Extraction is a convenience; manual sampling still works if it fails.
       }
     })();
+  };
+
+  const startFromHex = (hex: string) => {
+    // Starting from a hex on the Start page begins a fresh project.
+    setArtwork(null);
+    setWorkingColors([]);
+    setEditingPaletteId(null);
+    addColor(hex, 'manual');
+    navigate('workspace');
   };
 
   const updateColor = (id: string, hex: string, position?: SampledColor['position']) => {
@@ -158,9 +185,17 @@ export function App() {
       return false;
     }
 
+    const editingPalette = editingPaletteId
+      ? savedPalettes.find((palette) => palette.id === editingPaletteId)
+      : undefined;
+
     let paletteArtwork: SavedPalette['artwork'];
 
-    if (artwork) {
+    if (artwork && editingPalette?.artwork?.thumbnailDataUrl === artwork.dataUrl) {
+      // Editing with the stored thumbnail as the canvas: keep the stored
+      // image instead of re-encoding a thumbnail of a thumbnail.
+      paletteArtwork = editingPalette.artwork;
+    } else if (artwork) {
       try {
         paletteArtwork = {
           thumbnailDataUrl: await createArtworkThumbnail(artwork.dataUrl),
@@ -171,10 +206,10 @@ export function App() {
       }
     }
 
-    if (editingPaletteId && savedPalettes.some((palette) => palette.id === editingPaletteId)) {
+    if (editingPalette) {
       setSavedPalettes((current) =>
         current.map((palette) =>
-          palette.id === editingPaletteId
+          palette.id === editingPalette.id
             ? { ...palette, name, colors: workingColors, artwork: paletteArtwork ?? palette.artwork }
             : palette,
         ),
@@ -246,10 +281,7 @@ export function App() {
               selectArtwork(dataUrl, name);
               navigate('workspace');
             }}
-            onManualColor={(hex) => {
-              addColor(hex, 'manual');
-              navigate('workspace');
-            }}
+            onManualColor={startFromHex}
             savedPalettes={savedPalettes}
           />
         ) : null}

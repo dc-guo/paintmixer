@@ -6,6 +6,12 @@ import { colorDistance } from './deltaE.js';
 const HIGH_MAX = 8;
 const MEDIUM_MAX = 18;
 
+/**
+ * Plain-language label per confidence tier. Doubles as the `match-tag` CSS
+ * modifier class, so styles.css must be updated alongside any rewording.
+ */
+export const CONFIDENCE_LABEL = { high: 'close', medium: 'fair', low: 'far' } as const;
+
 export function confidenceForDistance(distance: number): PaintMatch['confidence'] {
   if (distance < HIGH_MAX) {
     return 'high';

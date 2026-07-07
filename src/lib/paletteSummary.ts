@@ -1,27 +1,49 @@
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
+import { formatPaletteDate } from './format.js';
 import type { PaintUsage } from './paintUsage.js';
+import { NOTE_STRAIGHT_FROM_TUBE } from './recipeEngine.js';
 
 export type SummaryItem = {
   color: SampledColor;
   recipe: MixRecipe | null;
 };
 
+function byPartsDescending(recipe: MixRecipe) {
+  return [...recipe.ingredients].sort((a, b) => b.parts - a.parts);
+}
+
+function parts(count: number) {
+  return `${count} part${count === 1 ? '' : 's'}`;
+}
+
+/** Numbered mixing instructions for one recipe, largest ingredient first. */
+export function mixSteps(recipe: MixRecipe): string[] {
+  const sorted = byPartsDescending(recipe);
+
+  if (sorted.length === 1) {
+    return [`Use ${sorted[0].paintName} straight from the tube.`];
+  }
+
+  return sorted.map((ingredient, index) =>
+    index === 0
+      ? `Start with ${parts(ingredient.parts)} ${ingredient.paintName}.`
+      : `Work in ${parts(ingredient.parts)} ${ingredient.paintName}, a little at a time.`,
+  );
+}
+
 function describeMix(recipe: MixRecipe): string {
-  const sorted = [...recipe.ingredients].sort((a, b) => b.parts - a.parts);
+  const sorted = byPartsDescending(recipe);
 
   const mix =
     sorted.length === 1
       ? `${sorted[0].paintName} straight from the tube`
       : sorted
-          .map(
-            (ingredient) =>
-              `${ingredient.parts} part${ingredient.parts === 1 ? '' : 's'} ${ingredient.paintName}`,
-          )
+          .map((ingredient) => `${parts(ingredient.parts)} ${ingredient.paintName}`)
           .join(' + ');
 
-  // "Straight from the tube." is already covered by the phrasing above.
-  const notes = recipe.notes.filter((note) => note !== 'Straight from the tube.');
+  // The single-paint phrasing above already says "straight from the tube".
+  const notes = recipe.notes.filter((note) => note !== NOTE_STRAIGHT_FROM_TUBE);
   return notes.length > 0 ? `${mix}. ${notes.join(' ')}` : `${mix}.`;
 }
 
@@ -39,11 +61,7 @@ export function buildPaletteSummary(
 
   lines.push(`${palette.name} — PaintBridge palette`);
 
-  const date = new Date(palette.createdAt).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const date = formatPaletteDate(palette.createdAt, { withYear: true });
   const source = palette.artwork ? ` · from ${palette.artwork.name}` : '';
   lines.push(`${date} · ${items.length} color${items.length === 1 ? '' : 's'}${source}`);
 

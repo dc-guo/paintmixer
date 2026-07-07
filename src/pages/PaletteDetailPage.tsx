@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { MixComparison } from '../components/MixComparison';
 import { liquitexBasics } from '../data/liquitexBasics';
-import { hexToRgb, isLightColor } from '../lib/color';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { formatRgb, hexToRgb, isLightColor } from '../lib/color';
+import { formatPaletteMeta } from '../lib/format';
+import { CONFIDENCE_LABEL } from '../lib/paintMatching';
 import { aggregatePaintUsage } from '../lib/paintUsage';
 import type { PaintUsage } from '../lib/paintUsage';
-import { buildPaletteSummary } from '../lib/paletteSummary';
+import { buildPaletteSummary, mixSteps } from '../lib/paletteSummary';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
@@ -20,8 +24,6 @@ type PaletteItem = {
   color: SampledColor;
   recipe: MixRecipe | null;
 };
-
-const CONFIDENCE_LABEL = { high: 'close', medium: 'fair', low: 'far' } as const;
 
 async function copyTextToClipboard(text: string) {
   try {
@@ -45,21 +47,6 @@ async function copyTextToClipboard(text: string) {
       return false;
     }
   }
-}
-
-function mixSteps(recipe: MixRecipe): string[] {
-  const sorted = [...recipe.ingredients].sort((a, b) => b.parts - a.parts);
-
-  if (sorted.length === 1) {
-    return [`Use ${sorted[0].paintName} straight from the tube.`];
-  }
-
-  return sorted.map((ingredient, index) => {
-    const parts = `${ingredient.parts} part${ingredient.parts === 1 ? '' : 's'}`;
-    return index === 0
-      ? `Start with ${parts} ${ingredient.paintName}.`
-      : `Work in ${parts} ${ingredient.paintName}, a little at a time.`;
-  });
 }
 
 function exportPaletteAsJson(palette: SavedPalette, items: PaletteItem[], usage: PaintUsage[]) {
@@ -148,19 +135,7 @@ export function PaletteDetailPage({
 
   const activeItem = items.find((item) => item.color.id === mixColorId) ?? null;
 
-  useEffect(() => {
-    if (!activeItem) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMixColorId(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeItem]);
+  useEscapeKey(Boolean(activeItem), () => setMixColorId(null));
 
   if (!palette) {
     return (
@@ -221,13 +196,7 @@ export function PaletteDetailPage({
                 </button>
               </h2>
             )}
-            <p className="sheet-meta">
-              {new Date(palette.createdAt).toLocaleDateString(undefined, {
-                month: 'long',
-                day: 'numeric',
-              })}{' '}
-              · {palette.colors.length} color{palette.colors.length === 1 ? '' : 's'}
-            </p>
+            <p className="sheet-meta">{formatPaletteMeta(palette)}</p>
           </div>
           <div className="sheet-actions">
             {copyState !== 'idle' ? (
@@ -295,7 +264,7 @@ export function PaletteDetailPage({
                     {rgb ? (
                       <span className="spec">
                         <span className="k">RGB</span>
-                        <span className="v">{`${rgb.r} · ${rgb.g} · ${rgb.b}`}</span>
+                        <span className="v">{formatRgb(rgb)}</span>
                       </span>
                     ) : null}
                   </span>
@@ -404,28 +373,7 @@ export function PaletteDetailPage({
                     <li key={step}>{step}</li>
                   ))}
                 </ol>
-                <div className="mix-compare">
-                  <span
-                    aria-label={`Target color ${activeItem.recipe.targetHex}`}
-                    className="half"
-                    style={{ backgroundColor: activeItem.recipe.targetHex }}
-                  />
-                  <span aria-hidden className="arrow">
-                    →
-                  </span>
-                  <span
-                    aria-label={`Likely mixed color ${activeItem.recipe.estimatedHex}`}
-                    className="half"
-                    style={{ backgroundColor: activeItem.recipe.estimatedHex }}
-                  />
-                </div>
-                <div className="mix-labels">
-                  <span className="micro">Target</span>
-                  <span className="micro">Likely mix</span>
-                </div>
-                {activeItem.recipe.notes.length > 0 ? (
-                  <p className="quiet-note">{activeItem.recipe.notes.join(' ')}</p>
-                ) : null}
+                <MixComparison recipe={activeItem.recipe} />
                 <span className="micro mix-foot">Approximate starter mix · test a swatch first</span>
               </>
             ) : (

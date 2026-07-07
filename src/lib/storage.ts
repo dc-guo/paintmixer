@@ -1,20 +1,39 @@
 import type { SavedPalette } from '../types/palette';
 
 const SAVED_PALETTES_KEY = 'paintbridge.savedPalettes.v1';
+const OWNED_PAINTS_KEY = 'paintbridge.ownedPaints.v1';
 
-export function loadSavedPalettes(): SavedPalette[] {
+function loadStoredArray<T>(key: string, isItem: (value: unknown) => value is T): T[] {
   try {
-    const raw = window.localStorage.getItem(SAVED_PALETTES_KEY);
+    const raw = window.localStorage.getItem(key);
 
     if (!raw) {
       return [];
     }
 
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SavedPalette[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isItem) : [];
   } catch {
     return [];
   }
+}
+
+function isSavedPalette(value: unknown): value is SavedPalette {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const palette = value as Partial<SavedPalette>;
+  return (
+    typeof palette.id === 'string' &&
+    typeof palette.name === 'string' &&
+    typeof palette.createdAt === 'string' &&
+    Array.isArray(palette.colors)
+  );
+}
+
+export function loadSavedPalettes(): SavedPalette[] {
+  return loadStoredArray(SAVED_PALETTES_KEY, isSavedPalette);
 }
 
 export function persistSavedPalettes(palettes: SavedPalette[]) {
@@ -34,21 +53,8 @@ export function persistSavedPalettes(palettes: SavedPalette[]) {
   }
 }
 
-const OWNED_PAINTS_KEY = 'paintbridge.ownedPaints.v1';
-
 export function loadOwnedPaintIds(): string[] {
-  try {
-    const raw = window.localStorage.getItem(OWNED_PAINTS_KEY);
-
-    if (!raw) {
-      return [];
-    }
-
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
+  return loadStoredArray(OWNED_PAINTS_KEY, (id): id is string => typeof id === 'string');
 }
 
 export function persistOwnedPaintIds(ids: string[]) {

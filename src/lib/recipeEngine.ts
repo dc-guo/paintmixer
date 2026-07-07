@@ -1,8 +1,11 @@
 import type { RGB } from '../types/color';
 import type { MixRecipe, Paint } from '../types/paint';
 import { getSaturation, rgbToHex } from './color.js';
-import { colorDistance, linearToSrgb, rgbToLab, srgbToLinear } from './deltaE.js';
+import { labDistance, linearToSrgb, rgbToLab, srgbToLinear } from './deltaE.js';
 import { confidenceForDistance } from './paintMatching.js';
+
+/** Shared with the summary layer so single-paint phrasing stays in sync. */
+export const NOTE_STRAIGHT_FROM_TUBE = 'Straight from the tube.';
 
 type Ingredient = {
   paint: Paint;
@@ -34,56 +37,27 @@ const THIRD_PARTS = [1, 2];
 const TOP_PAIRS_TO_EXTEND = 12;
 // Each extra ingredient must earn its keep by improving deltaE at least this much.
 const COMPLEXITY_PENALTY = 1.2;
+// Paints at least this light (Lab L) count as "white" for mixing advice.
+const WHITE_LIGHTNESS = 87;
 
-/**
- * Weighted average in linear RGB — a rough stand-in for real pigment mixing,
- * which is subtractive. Good enough to rank starter mixes; the UI frames
- * every result as an approximation.
- */
-export function estimateMixColor(ingredients: Ingredient[]): RGB {
-  let total = 0;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-
-  for (const { paint, parts } of ingredients) {
-    total += parts;
-    r += srgbToLinear(paint.rgb.r) * parts;
-    g += srgbToLinear(paint.rgb.g) * parts;
-    b += srgbToLinear(paint.rgb.b) * parts;
-  }
-
-  if (total === 0) {
-    return { r: 0, g: 0, b: 0 };
-  }
-
-  return {
-    r: linearToSrgb(r / total),
-    g: linearToSrgb(g / total),
-    b: linearToSrgb(b / total),
-  };
-}
-
-function makeCandidate(target: RGB, ingredients: Ingredient[]): Candidate {
-  const estimated = estimateMixColor(ingredients);
-  const deltaE = colorDistance(target, estimated);
-
-  return {
-    ingredients,
-    estimated,
-    deltaE,
-    score: deltaE + COMPLEXITY_PENALTY * (ingredients.length - 1),
-  };
+function isWhitePaint(paint: Paint) {
+  return rgbToLab(paint.rgb).l >= WHITE_LIGHTNESS;
 }
 
 function buildNotes(target: RGB, candidate: Candidate): string[] {
   const notes: string[] = [];
 
   if (candidate.ingredients.length === 1) {
-    notes.push('Straight from the tube.');
-  } else if (candidate.ingredients.some(({ paint }) => paint.id === 'titanium-white')) {
-    // Only meaningful when white is being mixed INTO something.
-    notes.push('Fold in the white gradually.');
+    notes.push(NOTE_STRAIGHT_FROM_TUBE);
+  } else {
+    const maxParts = Math.max(...candidate.ingredients.map(({ parts }) => parts));
+    const white = candidate.ingredients.find(({ paint }) => isWhitePaint(paint));
+
+    // Only meaningful when a white is folded INTO a larger base; when white
+    // dominates, the technique is the reverse (fold the pigment into it).
+    if (white && white.parts < maxParts) {
+      notes.push('Fold in the white gradually.');
+    }
   }
 
   const lightnessGap = rgbToLab(target).l - rgbToLab(candidate.estimated).l;
@@ -125,10 +99,64 @@ export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3):
     return [];
   }
 
+  // Hot loop: thousands of candidates are scored per call, so convert the
+  // fixed target to Lab once and linearize each paint once up front.
+  const targetLab = rgbToLab(target);
+  const linearById = new Map(
+    ownedPaints.map((paint) => [
+      paint.id,
+      {
+        r: srgbToLinear(paint.rgb.r),
+        g: srgbToLinear(paint.rgb.g),
+        b: srgbToLinear(paint.rgb.b),
+      },
+    ]),
+  );
+
+  const makeCandidate = (ingredients: Ingredient[]): Candidate => {
+    let total = 0;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+
+    for (const { paint, parts } of ingredients) {
+      const linear = linearById.get(paint.id);
+
+      if (!linear) {
+        continue;
+      }
+
+      total += parts;
+      r += linear.r * parts;
+      g += linear.g * parts;
+      b += linear.b * parts;
+    }
+
+    // Weighted average in linear RGB — a rough stand-in for real pigment
+    // mixing, which is subtractive. Good enough to rank starter mixes; the
+    // UI frames every result as an approximation.
+    const estimated: RGB =
+      total === 0
+        ? { r: 0, g: 0, b: 0 }
+        : {
+            r: linearToSrgb(r / total),
+            g: linearToSrgb(g / total),
+            b: linearToSrgb(b / total),
+          };
+    const deltaE = labDistance(targetLab, rgbToLab(estimated));
+
+    return {
+      ingredients,
+      estimated,
+      deltaE,
+      score: deltaE + COMPLEXITY_PENALTY * (ingredients.length - 1),
+    };
+  };
+
   const candidates: Candidate[] = [];
 
   for (const paint of ownedPaints) {
-    candidates.push(makeCandidate(target, [{ paint, parts: 1 }]));
+    candidates.push(makeCandidate([{ paint, parts: 1 }]));
   }
 
   const pairCandidates: Candidate[] = [];
@@ -140,7 +168,7 @@ export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3):
 
       for (const [partsA, partsB] of PAIR_RATIOS) {
         pairCandidates.push(
-          makeCandidate(target, [
+          makeCandidate([
             { paint: paintA, parts: partsA },
             { paint: paintB, parts: partsB },
           ]),
@@ -161,7 +189,7 @@ export function suggestMixes(target: RGB, ownedPaints: Paint[], maxResults = 3):
       }
 
       for (const parts of THIRD_PARTS) {
-        candidates.push(makeCandidate(target, [...pair.ingredients, { paint, parts }]));
+        candidates.push(makeCandidate([...pair.ingredients, { paint, parts }]));
       }
     }
   }

@@ -1,4 +1,4 @@
-import type { CMYK, PrintViability, RGB } from '../types/color';
+import type { CMYK, PrintViabilityStatus, RGB } from '../types/color';
 
 const HEX_PATTERN = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -71,9 +71,11 @@ export function rgbToCmyk(rgb: RGB): CMYK {
 }
 
 export function formatRgb(rgb: RGB) {
-  return `R ${rgb.r} / G ${rgb.g} / B ${rgb.b}`;
+  return `${rgb.r} · ${rgb.g} · ${rgb.b}`;
 }
 
+// formatCmyk and rgbToCmyk are UI-dead by design: CMYK is export-only per
+// plan decision #11, retained for exports and a possible future print view.
 export function formatCmyk(cmyk: CMYK) {
   return `C ${cmyk.c}% / M ${cmyk.m}% / Y ${cmyk.y}% / K ${cmyk.k}%`;
 }
@@ -98,31 +100,19 @@ export function isLightColor(rgb: RGB) {
   return (0.299 * clampChannel(rgb.r) + 0.587 * clampChannel(rgb.g) + 0.114 * clampChannel(rgb.b)) / 255 > 0.66;
 }
 
-export function getPrintViability(rgb: RGB): PrintViability {
+export function getPrintViability(rgb: RGB): PrintViabilityStatus {
   const saturation = getSaturation(rgb);
   const maxChannel = Math.max(rgb.r, rgb.g, rgb.b);
   const channelSpread = maxChannel - Math.min(rgb.r, rgb.g, rgb.b);
   const isBright = maxChannel > 220;
 
   if (saturation > 0.82 && isBright && channelSpread > 150) {
-    return {
-      status: 'Difficult to reproduce in print/paint',
-      explanation:
-        'This target is very saturated, so a printed or acrylic version will likely need a duller approximation.',
-    };
+    return 'Difficult to reproduce in print/paint';
   }
 
   if (saturation > 0.55 || (isBright && channelSpread > 100)) {
-    return {
-      status: 'May shift in print/paint',
-      explanation:
-        'This color may move slightly when translated from screen color into print or acrylic paint.',
-    };
+    return 'May shift in print/paint';
   }
 
-  return {
-    status: 'Likely printable/paintable',
-    explanation:
-      'This color is less extreme, so it is a more realistic starting point for print and acrylic approximation.',
-  };
+  return 'Likely printable/paintable';
 }

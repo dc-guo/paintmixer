@@ -1,5 +1,6 @@
 import type { RGB } from '../types/color';
 import { rgbToHex } from './color.js';
+import { loadImage } from './loadImage.js';
 
 export type ExtractedColor = {
   hex: string;
@@ -123,15 +124,6 @@ export function extractPaletteFromPixels(
       x: (px + 0.5) / safeWidth,
       y: (py + 0.5) / rows,
     };
-  });
-}
-
-function loadImage(dataUrl: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Image could not be decoded.'));
-    image.src = dataUrl;
   });
 }
 

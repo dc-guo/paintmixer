@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   formatCmyk,
+  formatRgb,
   getPrintViability,
   hexToRgb,
   isLightColor,
@@ -41,10 +42,14 @@ test('formatCmyk creates a readable approximation label', () => {
   assert.equal(formatCmyk({ c: 49, m: 0, y: 13, k: 57 }), 'C 49% / M 0% / Y 13% / K 57%');
 });
 
+test('formatRgb uses the dot-separated display style', () => {
+  assert.equal(formatRgb({ r: 56, g: 109, b: 95 }), '56 · 109 · 95');
+});
+
 test('getPrintViability keeps language approximate and flags saturated colors', () => {
-  assert.equal(getPrintViability({ r: 56, g: 109, b: 95 }).status, 'Likely printable/paintable');
+  assert.equal(getPrintViability({ r: 56, g: 109, b: 95 }), 'Likely printable/paintable');
   assert.equal(
-    getPrintViability({ r: 0, g: 255, b: 80 }).status,
+    getPrintViability({ r: 0, g: 255, b: 80 }),
     'Difficult to reproduce in print/paint',
   );
 });

@@ -810,30 +810,26 @@ h3 {
   font-size: 0.8rem;
 }
 
-.mix-compare,
-.output-pair {
+.mix-compare {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 14px;
 }
 
-.mix-compare .half,
-.output-pair .half {
+.mix-compare .half {
   flex: 1;
   height: 38px;
   border: 1px solid rgba(47, 50, 53, 0.14);
   border-radius: 999px;
 }
 
-.mix-compare .arrow,
-.output-pair .arrow {
+.mix-compare .arrow {
   color: var(--ink-faint);
   font-size: 0.8rem;
 }
 
-.mix-labels,
-.output-labels {
+.mix-labels {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -843,20 +839,6 @@ h3 {
 .mix-foot {
   display: block;
   margin-top: 14px;
-}
-
-.outputs {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.output-pair {
-  margin-top: 10px;
-}
-
-.output-pair .half {
-  height: 30px;
 }
 
 .palette-lower {
@@ -973,11 +955,6 @@ h3 {
 }
 
 /* ---------- saved palettes ---------- */
-
-.sheets {
-  display: grid;
-  gap: 20px;
-}
 
 .sheet-head {
   display: flex;

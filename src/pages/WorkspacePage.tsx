@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ImageColorPicker } from '../components/ImageColorPicker';
 import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
+import { MixComparison } from '../components/MixComparison';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
-import { getPrintViability, hexToRgb } from '../lib/color';
-import { matchPaints } from '../lib/paintMatching';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { formatRgb, getPrintViability, hexToRgb } from '../lib/color';
+import { CONFIDENCE_LABEL, matchPaints } from '../lib/paintMatching';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { ColorSource, SampledColor } from '../types/palette';
-
-const CONFIDENCE_LABEL = { high: 'close', medium: 'fair', low: 'far' } as const;
 
 type Artwork = {
   dataUrl: string;
@@ -29,7 +29,8 @@ type WorkspacePageProps = {
   /** Name of the saved palette being edited, or null when starting fresh. */
   editingPaletteName: string | null;
   onArtworkSelected: (dataUrl: string, name: string) => void;
-  onAutoGenerate: () => Promise<number>;
+  /** Resolves with the number of colors added, or null when extraction failed. */
+  onAutoGenerate: () => Promise<number | null>;
   onAddColor: (
     hex: string,
     source: ColorSource,
@@ -60,6 +61,10 @@ export function WorkspacePage({
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState(editingPaletteName ?? '');
   const [justSaved, setJustSaved] = useState<'saved' | 'updated' | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  // Ref, not state: rapid double-submits land before React re-renders, so a
+  // state flag would still read false in both handlers' closures.
+  const isSavingRef = useRef(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
@@ -71,10 +76,14 @@ export function WorkspacePage({
   const inspectedRgb = inspectedHex ? hexToRgb(inspectedHex) : null;
   const viability = inspectedRgb ? getPrintViability(inspectedRgb) : null;
 
-  const matches = useMemo(
-    () => (inspectedRgb ? matchPaints(inspectedRgb, liquitexBasics, 4) : []),
-    [inspectedHex],
-  );
+  // Matching and mix search are expensive; defer them so marker drags stay
+  // smooth and only the settled color pays for the computation.
+  const deferredHex = useDeferredValue(inspectedHex);
+
+  const matches = useMemo(() => {
+    const rgb = deferredHex ? hexToRgb(deferredHex) : null;
+    return rgb ? matchPaints(rgb, liquitexBasics, 4) : [];
+  }, [deferredHex]);
 
   const filteredPaints = useMemo(() => {
     const query = paintQuery.trim().toLowerCase();
@@ -88,13 +97,10 @@ export function WorkspacePage({
     [ownedPaintIds],
   );
 
-  const bestRecipe = useMemo(
-    () =>
-      inspectedRgb && ownedPaints.length > 0
-        ? suggestMixes(inspectedRgb, ownedPaints, 1)[0] ?? null
-        : null,
-    [inspectedHex, ownedPaints],
-  );
+  const bestRecipe = useMemo(() => {
+    const rgb = deferredHex ? hexToRgb(deferredHex) : null;
+    return rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
+  }, [deferredHex, ownedPaints]);
 
   const inspectedLabel = preview
     ? 'previewing — not in palette'
@@ -121,9 +127,11 @@ export function WorkspacePage({
     const added = await onAutoGenerate();
     setIsAutoGenerating(false);
     setAutoMessage(
-      added > 0
-        ? `Added ${added} color${added === 1 ? '' : 's'}.`
-        : 'The dominant colors are already here.',
+      added === null
+        ? 'Could not read the artwork.'
+        : added > 0
+          ? `Added ${added} color${added === 1 ? '' : 's'}.`
+          : 'The dominant colors are already here.',
     );
   };
 
@@ -133,29 +141,36 @@ export function WorkspacePage({
     setJustSaved(null);
   }, [colors]);
 
-  useEffect(() => {
-    if (!isInventoryOpen) {
-      return;
-    }
+  useEscapeKey(isInventoryOpen, () => setIsInventoryOpen(false));
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsInventoryOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isInventoryOpen]);
+  // Keep the name field in step with the editing session (cleared when a new
+  // upload starts a fresh project while this page stays mounted).
+  useEffect(() => {
+    setPaletteName(editingPaletteName ?? '');
+  }, [editingPaletteName]);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    const wasUpdate = Boolean(editingPaletteName);
-    const saved = await onSavePalette(
-      paletteName.trim() || editingPaletteName || 'Untitled palette',
-    );
 
-    if (saved) {
-      setJustSaved(wasUpdate ? 'updated' : 'saved');
+    if (isSavingRef.current) {
+      return;
+    }
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+
+    try {
+      const wasUpdate = Boolean(editingPaletteName);
+      const saved = await onSavePalette(
+        paletteName.trim() || editingPaletteName || 'Untitled palette',
+      );
+
+      if (saved) {
+        setJustSaved(wasUpdate ? 'updated' : 'saved');
+      }
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -240,10 +255,10 @@ export function WorkspacePage({
                 <dl className="color-values">
                   <div>
                     <dt>RGB</dt>
-                    <dd>{`${inspectedRgb.r} · ${inspectedRgb.g} · ${inspectedRgb.b}`}</dd>
+                    <dd>{formatRgb(inspectedRgb)}</dd>
                   </div>
                 </dl>
-                <span className="outlook">{viability.status}</span>
+                <span className="outlook">{viability}</span>
                 {preview ? (
                   <div>
                     <button
@@ -322,28 +337,7 @@ export function WorkspacePage({
                     </span>
                   ))}
                 </div>
-                <div className="mix-compare">
-                  <span
-                    aria-label={`Target color ${bestRecipe.targetHex}`}
-                    className="half"
-                    style={{ backgroundColor: bestRecipe.targetHex }}
-                  />
-                  <span aria-hidden className="arrow">
-                    →
-                  </span>
-                  <span
-                    aria-label={`Likely mixed color ${bestRecipe.estimatedHex}`}
-                    className="half"
-                    style={{ backgroundColor: bestRecipe.estimatedHex }}
-                  />
-                </div>
-                <div className="mix-labels">
-                  <span className="micro">Target</span>
-                  <span className="micro">Likely mix</span>
-                </div>
-                {bestRecipe.notes.length > 0 ? (
-                  <p className="quiet-note">{bestRecipe.notes.join(' ')}</p>
-                ) : null}
+                <MixComparison recipe={bestRecipe} />
                 <span className="micro mix-foot">Approximate · test a swatch first</span>
               </>
             )}
@@ -359,8 +353,12 @@ export function WorkspacePage({
                 value={paletteName}
               />
               <div className="save-row">
-                <button className="primary-button" disabled={colors.length === 0} type="submit">
-                  {editingPaletteName ? 'Update palette' : 'Save palette'}
+                <button
+                  className="primary-button"
+                  disabled={colors.length === 0 || isSaving}
+                  type="submit"
+                >
+                  {isSaving ? 'Saving…' : editingPaletteName ? 'Update palette' : 'Save palette'}
                 </button>
                 {justSaved ? (
                   <span className="save-confirm" role="status">

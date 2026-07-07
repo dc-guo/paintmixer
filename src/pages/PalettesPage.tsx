@@ -1,3 +1,4 @@
+import { formatPaletteMeta } from '../lib/format';
 import type { SavedPalette } from '../types/palette';
 
 type PalettesPageProps = {
@@ -31,13 +32,7 @@ export function PalettesPage({ palettes }: PalettesPageProps) {
               </span>
               <span className="gallery-head">
                 <span className="gallery-name">{palette.name}</span>
-                <span className="gallery-meta">
-                  {new Date(palette.createdAt).toLocaleDateString(undefined, {
-                    month: 'long',
-                    day: 'numeric',
-                  })}{' '}
-                  · {palette.colors.length} color{palette.colors.length === 1 ? '' : 's'}
-                </span>
+                <span className="gallery-meta">{formatPaletteMeta(palette)}</span>
               </span>
             </a>
           </li>

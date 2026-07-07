@@ -15,8 +15,3 @@ export type PrintViabilityStatus =
   | 'Likely printable/paintable'
   | 'May shift in print/paint'
   | 'Difficult to reproduce in print/paint';
-
-export type PrintViability = {
-  status: PrintViabilityStatus;
-  explanation: string;
-};

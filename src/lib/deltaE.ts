@@ -40,14 +40,18 @@ export function rgbToLab(rgb: RGB): Lab {
 }
 
 /**
+ * CIE76 Delta E between two Lab colors. Exposed separately so hot loops can
+ * convert a fixed reference color to Lab once instead of per comparison.
+ */
+export function labDistance(a: Lab, b: Lab) {
+  return Math.sqrt((a.l - b.l) ** 2 + (a.a - b.a) ** 2 + (a.b - b.b) ** 2);
+}
+
+/**
  * CIE76 Delta E between two colors. Simpler than CIEDE2000 and slightly
  * overstates differences in saturated regions, which is acceptable for
  * ranking paint matches in the POC (plan §9A documents this limitation).
  */
 export function colorDistance(a: RGB, b: RGB) {
-  const labA = rgbToLab(a);
-  const labB = rgbToLab(b);
-  return Math.sqrt(
-    (labA.l - labB.l) ** 2 + (labA.a - labB.a) ** 2 + (labA.b - labB.b) ** 2,
-  );
+  return labDistance(rgbToLab(a), rgbToLab(b));
 }

@@ -47,6 +47,11 @@ export function ImageColorPicker({
       return;
     }
 
+    // Zero size until the image decodes, so a failed load leaves sampling
+    // inert instead of reading the default blank canvas as black.
+    canvas.width = 0;
+    canvas.height = 0;
+
     const image = new Image();
     image.onload = () => {
       canvas.width = image.naturalWidth;
