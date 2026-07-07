@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PaletteDetailPage } from './pages/PaletteDetailPage';
 import { PalettesPage } from './pages/PalettesPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
@@ -12,27 +13,35 @@ import {
 } from './lib/storage';
 import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
-type Route = 'start' | 'workspace' | 'palettes';
+type Page = 'start' | 'workspace' | 'palettes';
+
+type Route = { page: Page } | { page: 'palette'; paletteId: string };
 
 type Artwork = {
   dataUrl: string;
   name: string;
 };
 
-const NAV_ITEMS: Array<{ route: Route; label: string; hash: string }> = [
-  { route: 'start', label: 'Start', hash: '#/' },
-  { route: 'workspace', label: 'Workspace', hash: '#/workspace' },
-  { route: 'palettes', label: 'Saved palettes', hash: '#/palettes' },
+const NAV_ITEMS: Array<{ page: Page; label: string; hash: string }> = [
+  { page: 'start', label: 'Start', hash: '#/' },
+  { page: 'workspace', label: 'Workspace', hash: '#/workspace' },
+  { page: 'palettes', label: 'Saved palettes', hash: '#/palettes' },
 ];
 
 function routeFromHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, '');
 
   if (hash === 'workspace' || hash === 'palettes') {
-    return hash;
+    return { page: hash };
   }
 
-  return 'start';
+  const detail = /^palettes\/(.+)$/.exec(hash);
+
+  if (detail) {
+    return { page: 'palette', paletteId: decodeURIComponent(detail[1]) };
+  }
+
+  return { page: 'start' };
 }
 
 export function App() {
@@ -63,8 +72,8 @@ export function App() {
     );
   };
 
-  const navigate = (next: Route) => {
-    const item = NAV_ITEMS.find((candidate) => candidate.route === next);
+  const navigate = (next: Page) => {
+    const item = NAV_ITEMS.find((candidate) => candidate.page === next);
     window.location.hash = item ? item.hash : '#/';
   };
 
@@ -169,9 +178,13 @@ export function App() {
         <nav aria-label="Main navigation">
           {NAV_ITEMS.map((item) => (
             <a
-              aria-current={route === item.route ? 'page' : undefined}
+              aria-current={
+                route.page === item.page || (item.page === 'palettes' && route.page === 'palette')
+                  ? 'page'
+                  : undefined
+              }
               href={item.hash}
-              key={item.route}
+              key={item.page}
             >
               {item.label}
             </a>
@@ -180,7 +193,7 @@ export function App() {
       </header>
 
       <main>
-        {route === 'start' ? (
+        {route.page === 'start' ? (
           <StartPage
             onArtworkSelected={(dataUrl, name) => {
               selectArtwork(dataUrl, name);
@@ -193,7 +206,7 @@ export function App() {
             savedPalettes={savedPalettes}
           />
         ) : null}
-        {route === 'workspace' ? (
+        {route.page === 'workspace' ? (
           <WorkspacePage
             activeColorId={activeColorId}
             artwork={artwork}
@@ -211,11 +224,15 @@ export function App() {
             onSelectColor={setActiveColorId}
           />
         ) : null}
-        {route === 'palettes' ? (
-          <PalettesPage
-            onDelete={deletePalette}
+        {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}
+        {route.page === 'palette' ? (
+          <PaletteDetailPage
+            onDelete={(id) => {
+              deletePalette(id);
+              navigate('palettes');
+            }}
             ownedPaintIds={ownedPaintIds}
-            palettes={savedPalettes}
+            palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />
         ) : null}
       </main>

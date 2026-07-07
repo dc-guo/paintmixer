@@ -42,7 +42,7 @@ export function StartPage({ savedPalettes, onArtworkSelected, onManualColor }: S
           <ul className="recent-list">
             {recentPalettes.map((palette) => (
               <li key={palette.id}>
-                <a href="#/palettes">
+                <a href={`#/palettes/${palette.id}`}>
                   <span aria-hidden className="recent-swatches">
                     {palette.colors.slice(0, 5).map((color) => (
                       <span
