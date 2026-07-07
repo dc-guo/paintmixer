@@ -31,13 +31,17 @@ test('confidenceForDistance maps thresholds', () => {
   assert.equal(confidenceForDistance(18.1), 'low');
 });
 
-test('liquitexBasics seed data is well-formed', () => {
+test('liquitexBasics covers the full current range and is well-formed', () => {
   const ids = new Set(liquitexBasics.map((paint) => paint.id));
+  const names = new Set(liquitexBasics.map((paint) => paint.name));
   assert.equal(ids.size, liquitexBasics.length, 'paint ids are unique');
-  assert.ok(liquitexBasics.length >= 30, 'seed set has a useful breadth');
+  assert.equal(names.size, liquitexBasics.length, 'paint names are unique');
+  assert.equal(liquitexBasics.length, 72, 'complete current BASICS range');
 
   for (const paint of liquitexBasics) {
     assert.equal(normalizeHex(paint.hex), paint.hex, `${paint.id} has a normalized hex`);
     assert.equal(paint.brand, 'Liquitex BASICS');
+    assert.ok(paint.opacity, `${paint.id} has an opacity rating`);
+    assert.ok(paint.sourceNote, `${paint.id} has a source note`);
   }
 });
