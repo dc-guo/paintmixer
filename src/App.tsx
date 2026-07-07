@@ -212,7 +212,11 @@ export function App() {
           />
         ) : null}
         {route === 'palettes' ? (
-          <PalettesPage onDelete={deletePalette} palettes={savedPalettes} />
+          <PalettesPage
+            onDelete={deletePalette}
+            ownedPaintIds={ownedPaintIds}
+            palettes={savedPalettes}
+          />
         ) : null}
       </main>
     </div>

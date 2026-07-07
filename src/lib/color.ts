@@ -78,7 +78,7 @@ export function formatCmyk(cmyk: CMYK) {
   return `C ${cmyk.c}% / M ${cmyk.m}% / Y ${cmyk.y}% / K ${cmyk.k}%`;
 }
 
-function getSaturation(rgb: RGB) {
+export function getSaturation(rgb: RGB) {
   const r = clampChannel(rgb.r) / 255;
   const g = clampChannel(rgb.g) / 255;
   const b = clampChannel(rgb.b) / 255;

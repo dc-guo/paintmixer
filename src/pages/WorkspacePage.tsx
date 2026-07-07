@@ -7,6 +7,7 @@ import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { getPrintViability, hexToRgb, rgbToCmyk } from '../lib/color';
 import { matchPaints } from '../lib/paintMatching';
+import { suggestMixes } from '../lib/recipeEngine';
 import type { ColorSource, SampledColor } from '../types/palette';
 
 const CONFIDENCE_LABEL = { high: 'close', medium: 'fair', low: 'far' } as const;
@@ -79,6 +80,19 @@ export function WorkspacePage({
       ? liquitexBasics.filter((paint) => paint.name.toLowerCase().includes(query))
       : liquitexBasics;
   }, [paintQuery]);
+
+  const ownedPaints = useMemo(
+    () => liquitexBasics.filter((paint) => ownedPaintIds.includes(paint.id)),
+    [ownedPaintIds],
+  );
+
+  const bestRecipe = useMemo(
+    () =>
+      inspectedRgb && ownedPaints.length > 0
+        ? suggestMixes(inspectedRgb, ownedPaints, 1)[0] ?? null
+        : null,
+    [inspectedHex, ownedPaints],
+  );
 
   const inspectedLabel = preview
     ? 'previewing — not in palette'
@@ -270,7 +284,49 @@ export function WorkspacePage({
 
           <article className="panel">
             <p className="eyebrow">Starter mix</p>
-            <p className="empty-state">Mixes will use your owned paints once the engine lands.</p>
+            {!inspectedHex ? (
+              <p className="empty-state">Select a color first.</p>
+            ) : ownedPaints.length === 0 ? (
+              <p className="empty-state">
+                Mark the paints you own ("Edit my paints" above) to get starter mixes.
+              </p>
+            ) : !bestRecipe ? (
+              <p className="empty-state">No workable mix from your paints.</p>
+            ) : (
+              <>
+                <div className="mix-pills">
+                  {bestRecipe.ingredients.map((ingredient) => (
+                    <span className="mix-pill" key={ingredient.paintId}>
+                      <span className="parts">{ingredient.parts}</span>
+                      {ingredient.paintName}
+                    </span>
+                  ))}
+                </div>
+                <div className="mix-compare">
+                  <span
+                    aria-label={`Target color ${bestRecipe.targetHex}`}
+                    className="half"
+                    style={{ backgroundColor: bestRecipe.targetHex }}
+                  />
+                  <span aria-hidden className="arrow">
+                    →
+                  </span>
+                  <span
+                    aria-label={`Likely mixed color ${bestRecipe.estimatedHex}`}
+                    className="half"
+                    style={{ backgroundColor: bestRecipe.estimatedHex }}
+                  />
+                </div>
+                <div className="mix-labels">
+                  <span className="micro">Target</span>
+                  <span className="micro">Likely mix · ΔE ≈ {Math.round(bestRecipe.deltaE)}</span>
+                </div>
+                {bestRecipe.notes.length > 0 ? (
+                  <p className="quiet-note">{bestRecipe.notes.join(' ')}</p>
+                ) : null}
+                <span className="micro mix-foot">Approximate · test a swatch first</span>
+              </>
+            )}
           </article>
 
           <article className="panel">

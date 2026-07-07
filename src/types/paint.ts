@@ -22,3 +22,16 @@ export type PaintMatch = {
   deltaE: number;
   confidence: 'high' | 'medium' | 'low';
 };
+
+export type MixRecipe = {
+  targetHex: string;
+  ingredients: Array<{
+    paintId: string;
+    paintName: string;
+    parts: number;
+  }>;
+  estimatedHex: string;
+  deltaE: number;
+  confidence: 'high' | 'medium' | 'low';
+  notes: string[];
+};
