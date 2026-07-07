@@ -51,19 +51,26 @@ export function App() {
     window.location.hash = item ? item.hash : '#/';
   };
 
-  const addColor = (hex: string, source: ColorSource) => {
-    const color: SampledColor = { id: createId(), hex, source };
+  const addColor = (hex: string, source: ColorSource, position?: SampledColor['position']) => {
+    const color: SampledColor = { id: createId(), hex, source, position };
     setWorkingColors((current) => [...current, color]);
     setActiveColorId(color.id);
   };
 
   const autoGeneratePalette = async (dataUrl: string) => {
     try {
-      const hexes = await extractPaletteFromDataUrl(dataUrl, 6);
+      const extracted = await extractPaletteFromDataUrl(dataUrl, 5);
       const existing = new Set(workingColors.map((color) => color.hex));
-      const fresh = hexes
-        .filter((hex) => !existing.has(hex))
-        .map((hex): SampledColor => ({ id: createId(), hex, source: 'auto' }));
+      const fresh = extracted
+        .filter((color) => !existing.has(color.hex))
+        .map(
+          (color): SampledColor => ({
+            id: createId(),
+            hex: color.hex,
+            source: 'auto',
+            position: { x: color.x, y: color.y },
+          }),
+        );
 
       if (fresh.length === 0) {
         return 0;
@@ -82,8 +89,28 @@ export function App() {
   };
 
   const selectArtwork = (dataUrl: string, name: string) => {
+    // New artwork starts a fresh working palette.
     setArtwork({ dataUrl, name });
-    void autoGeneratePalette(dataUrl);
+    setWorkingColors([]);
+    setActiveColorId(null);
+
+    void (async () => {
+      try {
+        const extracted = await extractPaletteFromDataUrl(dataUrl, 5);
+        const fresh = extracted.map(
+          (color): SampledColor => ({
+            id: createId(),
+            hex: color.hex,
+            source: 'auto',
+            position: { x: color.x, y: color.y },
+          }),
+        );
+        setWorkingColors(fresh);
+        setActiveColorId(fresh[0]?.id ?? null);
+      } catch {
+        // Extraction is a convenience; manual sampling still works if it fails.
+      }
+    })();
   };
 
   const removeColor = (id: string) => {

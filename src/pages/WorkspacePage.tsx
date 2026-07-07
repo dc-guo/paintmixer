@@ -18,7 +18,11 @@ type WorkspacePageProps = {
   activeColorId: string | null;
   onArtworkSelected: (dataUrl: string, name: string) => void;
   onAutoGenerate: () => Promise<number>;
-  onAddColor: (hex: string, source: ColorSource) => void;
+  onAddColor: (
+    hex: string,
+    source: ColorSource,
+    position?: SampledColor['position'],
+  ) => void;
   onSelectColor: (id: string) => void;
   onRemoveColor: (id: string) => void;
   onSavePalette: (name: string) => boolean;
@@ -72,10 +76,25 @@ export function WorkspacePage({
       <div className="workspace-columns">
         <section className="workspace-column" aria-label="Artwork and working palette">
           {artwork ? (
-            <ImageColorPicker
-              dataUrl={artwork.dataUrl}
-              onSample={(hex) => onAddColor(hex, 'image')}
-            />
+            <div className="artwork-frame">
+              <ImageColorPicker
+                dataUrl={artwork.dataUrl}
+                onSample={(hex, position) => onAddColor(hex, 'image', position)}
+              />
+              {colors
+                .filter((color) => color.position)
+                .map((color) => (
+                  <span
+                    aria-hidden
+                    className={color.id === activeColorId ? 'marker active' : 'marker'}
+                    key={color.id}
+                    style={{
+                      left: `${(color.position?.x ?? 0) * 100}%`,
+                      top: `${(color.position?.y ?? 0) * 100}%`,
+                    }}
+                  />
+                ))}
+            </div>
           ) : (
             <div className="panel">
               <p className="eyebrow">Artwork</p>

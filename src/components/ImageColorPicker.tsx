@@ -4,8 +4,12 @@ import { rgbToHex } from '../lib/color';
 
 type ImageColorPickerProps = {
   dataUrl: string;
-  onSample: (hex: string) => void;
+  onSample: (hex: string, position: { x: number; y: number }) => void;
 };
+
+function clampFraction(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
 
 export function ImageColorPicker({ dataUrl, onSample }: ImageColorPickerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -36,17 +40,13 @@ export function ImageColorPicker({ dataUrl, onSample }: ImageColorPickerProps) {
     }
 
     const rect = canvas.getBoundingClientRect();
-    const x = Math.min(
-      canvas.width - 1,
-      Math.max(0, Math.round((event.clientX - rect.left) * (canvas.width / rect.width))),
-    );
-    const y = Math.min(
-      canvas.height - 1,
-      Math.max(0, Math.round((event.clientY - rect.top) * (canvas.height / rect.height))),
-    );
+    const fx = clampFraction((event.clientX - rect.left) / rect.width);
+    const fy = clampFraction((event.clientY - rect.top) / rect.height);
+    const x = Math.min(canvas.width - 1, Math.floor(fx * canvas.width));
+    const y = Math.min(canvas.height - 1, Math.floor(fy * canvas.height));
     const [r = 0, g = 0, b = 0] = context.getImageData(x, y, 1, 1).data;
 
-    onSample(rgbToHex({ r, g, b }));
+    onSample(rgbToHex({ r, g, b }), { x: fx, y: fy });
   };
 
   return (

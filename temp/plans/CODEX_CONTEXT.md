@@ -132,7 +132,9 @@ The target user needs practical guidance, not a pigment-science dashboard.
 
 - User can upload a PNG/JPG/WebP image.
 - Image displays in the app.
-- On upload, the app auto-generates a starting palette (~6 dominant, visually distinct colors) so the user has something to work with immediately. Deterministic local extraction, no AI.
+- On upload, the app auto-generates a starting palette (5–6 dominant, visually distinct colors) so the user has something to work with immediately. Deterministic local extraction, no AI. Uploading new artwork replaces the working palette rather than appending to it.
+- Ring markers on the image show where each palette color came from (auto-extracted and click-sampled alike); the active color's marker is larger. Manual hex colors have no marker.
+- The displayed image auto-scales (capped height) so the working palette stays visible without scrolling.
 - User can click or tap on the image to sample additional colors.
 - App shows the sampled color as hex, RGB, and preview swatch.
 

@@ -431,13 +431,38 @@ h3 {
   align-content: start;
 }
 
+.artwork-frame {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 .artwork-canvas {
   display: block;
-  width: 100%;
+  max-width: 100%;
+  max-height: 52vh;
+  width: auto;
   height: auto;
   border: 1px solid var(--line);
   border-radius: 18px;
   cursor: crosshair;
+}
+
+.marker {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 1px 6px rgba(40, 50, 56, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.marker.active {
+  width: 32px;
+  height: 32px;
 }
 
 .swatch-grid {

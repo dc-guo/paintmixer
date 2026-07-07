@@ -4,6 +4,8 @@ export type SampledColor = {
   id: string;
   hex: string;
   source: ColorSource;
+  /** Fractions (0–1) of image width/height; absent for manual colors. */
+  position?: { x: number; y: number };
 };
 
 export type SavedPalette = {
