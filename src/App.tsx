@@ -124,13 +124,18 @@ export function App() {
     persistPaletteSize(clamped);
   };
 
-  /** Returns the number of colors added, or null when extraction failed. */
+  /** Re-extracts the palette at the chosen size, replacing the auto-extracted
+   * colors while keeping any the user added by hand. Returns the number of fresh
+   * colors placed, or null when extraction failed. */
   const autoGeneratePalette = async (dataUrl: string): Promise<number | null> => {
     try {
       const extracted = await extractPaletteFromDataUrl(dataUrl, paletteSize);
-      const existing = new Set(workingColors.map((color) => color.hex));
+      // Keep colors the user added by hex or by clicking the artwork; only the
+      // previously auto-extracted colors are replaced by the fresh set.
+      const kept = workingColors.filter((color) => color.source !== 'auto');
+      const keptHexes = new Set(kept.map((color) => color.hex));
       const fresh = extracted
-        .filter((color) => !existing.has(color.hex))
+        .filter((color) => !keptHexes.has(color.hex))
         .map(toSampledColor);
 
       if (fresh.length === 0) {
@@ -138,10 +143,16 @@ export function App() {
       }
 
       setWorkingColors((current) => {
-        const currentHexes = new Set(current.map((color) => color.hex));
-        return [...current, ...fresh.filter((color) => !currentHexes.has(color.hex))];
+        // Recompute kept colors against the latest state so anything added while
+        // extraction was running survives.
+        const keptNow = current.filter((color) => color.source !== 'auto');
+        const keptNowHexes = new Set(keptNow.map((color) => color.hex));
+        return [...fresh.filter((color) => !keptNowHexes.has(color.hex)), ...keptNow];
       });
-      setActiveColorId((activeId) => activeId ?? fresh[0].id);
+      // Move focus to the first fresh color unless a kept color is still selected.
+      setActiveColorId((activeId) =>
+        activeId && kept.some((color) => color.id === activeId) ? activeId : fresh[0].id,
+      );
       return fresh.length;
     } catch {
       return null;

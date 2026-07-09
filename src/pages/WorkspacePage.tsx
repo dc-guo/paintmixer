@@ -141,8 +141,8 @@ export function WorkspacePage({
       added === null
         ? 'Could not read the artwork.'
         : added > 0
-          ? `Added ${added} color${added === 1 ? '' : 's'}.`
-          : 'The dominant colors are already here.',
+          ? `Regenerated ${added} color${added === 1 ? '' : 's'} from the artwork.`
+          : 'No colors found in the artwork.',
     );
   };
 
