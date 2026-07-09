@@ -11,6 +11,7 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import { formatRgb, getPrintViability, hexToRgb } from '../lib/color';
 import { CONFIDENCE_LABEL, matchPaints } from '../lib/paintMatching';
 import { suggestMixes } from '../lib/recipeEngine';
+import { MAX_PALETTE_SIZE, MIN_PALETTE_SIZE } from '../lib/storage';
 import type { MixRecipe } from '../types/paint';
 import type { ColorSource, SampledColor } from '../types/palette';
 
@@ -45,6 +46,8 @@ type WorkspacePageProps = {
   onSetColorRecipe: (colorId: string, recipe: MixRecipe | null) => void;
   ownedPaintIds: string[];
   onToggleOwnedPaint: (id: string) => void;
+  paletteSize: number;
+  onPaletteSizeChange: (next: number) => void;
 };
 
 export function WorkspacePage({
@@ -62,6 +65,8 @@ export function WorkspacePage({
   onSetColorRecipe,
   ownedPaintIds,
   onToggleOwnedPaint,
+  paletteSize,
+  onPaletteSizeChange,
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState(editingPaletteName ?? '');
   const [justSaved, setJustSaved] = useState<'saved' | 'updated' | null>(null);
@@ -220,14 +225,41 @@ export function WorkspacePage({
                 Working palette · {colors.length}
               </span>
               {artwork ? (
-                <button
-                  className="text-link"
-                  disabled={isAutoGenerating}
-                  onClick={() => void handleAutoGenerate()}
-                  type="button"
-                >
-                  {isAutoGenerating ? 'Generating…' : 'Re-generate'}
-                </button>
+                <div className="strip-actions">
+                  <span
+                    aria-label="Number of colors to extract"
+                    className="palette-size"
+                    role="group"
+                  >
+                    <button
+                      aria-label="Fewer colors"
+                      className="parts-step"
+                      disabled={paletteSize <= MIN_PALETTE_SIZE}
+                      onClick={() => onPaletteSizeChange(paletteSize - 1)}
+                      type="button"
+                    >
+                      −
+                    </button>
+                    <span className="palette-size-value">{paletteSize}</span>
+                    <button
+                      aria-label="More colors"
+                      className="parts-step"
+                      disabled={paletteSize >= MAX_PALETTE_SIZE}
+                      onClick={() => onPaletteSizeChange(paletteSize + 1)}
+                      type="button"
+                    >
+                      +
+                    </button>
+                  </span>
+                  <button
+                    className="text-link"
+                    disabled={isAutoGenerating}
+                    onClick={() => void handleAutoGenerate()}
+                    type="button"
+                  >
+                    {isAutoGenerating ? 'Generating…' : 'Re-generate'}
+                  </button>
+                </div>
               ) : null}
             </div>
             {autoMessage ? (

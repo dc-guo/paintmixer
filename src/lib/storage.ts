@@ -2,6 +2,45 @@ import type { SavedPalette } from '../types/palette';
 
 const SAVED_PALETTES_KEY = 'paintbridge.savedPalettes.v1';
 const OWNED_PAINTS_KEY = 'paintbridge.ownedPaints.v1';
+const PALETTE_SIZE_KEY = 'paintbridge.paletteSize.v1';
+
+export const MIN_PALETTE_SIZE = 3;
+export const MAX_PALETTE_SIZE = 8;
+export const DEFAULT_PALETTE_SIZE = 5;
+
+export function clampPaletteSize(size: number): number {
+  if (!Number.isFinite(size)) {
+    return DEFAULT_PALETTE_SIZE;
+  }
+
+  return Math.min(MAX_PALETTE_SIZE, Math.max(MIN_PALETTE_SIZE, Math.round(size)));
+}
+
+/** Validate a stored palette-size string; missing/garbage falls back to the default. */
+export function parsePaletteSize(raw: string | null): number {
+  if (raw === null || raw.trim() === '') {
+    return DEFAULT_PALETTE_SIZE;
+  }
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? clampPaletteSize(parsed) : DEFAULT_PALETTE_SIZE;
+}
+
+export function loadPaletteSize(): number {
+  try {
+    return parsePaletteSize(window.localStorage.getItem(PALETTE_SIZE_KEY));
+  } catch {
+    return DEFAULT_PALETTE_SIZE;
+  }
+}
+
+export function persistPaletteSize(size: number): void {
+  try {
+    window.localStorage.setItem(PALETTE_SIZE_KEY, String(clampPaletteSize(size)));
+  } catch {
+    // Storage can be unavailable (private mode, quota); persistence is best-effort.
+  }
+}
 
 function loadStoredArray<T>(key: string, isItem: (value: unknown) => value is T): T[] {
   try {

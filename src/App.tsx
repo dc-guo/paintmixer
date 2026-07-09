@@ -7,10 +7,13 @@ import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
 import type { ExtractedColor } from './lib/paletteExtraction';
 import { createArtworkThumbnail } from './lib/thumbnails';
 import {
+  clampPaletteSize,
   createId,
   loadOwnedPaintIds,
+  loadPaletteSize,
   loadSavedPalettes,
   persistOwnedPaintIds,
+  persistPaletteSize,
   persistSavedPalettes,
 } from './lib/storage';
 import type { MixRecipe } from './types/paint';
@@ -69,6 +72,7 @@ export function App() {
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(loadSavedPalettes);
   const [ownedPaintIds, setOwnedPaintIds] = useState<string[]>(loadOwnedPaintIds);
   const [editingPaletteId, setEditingPaletteId] = useState<string | null>(null);
+  const [paletteSize, setPaletteSize] = useState<number>(loadPaletteSize);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(routeFromHash());
@@ -113,10 +117,17 @@ export function App() {
     setActiveColorId(color.id);
   };
 
+  const changePaletteSize = (next: number) => {
+    // Keep the stored preference and the UI in lockstep, clamped to [3, 8].
+    const clamped = clampPaletteSize(next);
+    setPaletteSize(clamped);
+    persistPaletteSize(clamped);
+  };
+
   /** Returns the number of colors added, or null when extraction failed. */
   const autoGeneratePalette = async (dataUrl: string): Promise<number | null> => {
     try {
-      const extracted = await extractPaletteFromDataUrl(dataUrl, 5);
+      const extracted = await extractPaletteFromDataUrl(dataUrl, paletteSize);
       const existing = new Set(workingColors.map((color) => color.hex));
       const fresh = extracted
         .filter((color) => !existing.has(color.hex))
@@ -146,7 +157,7 @@ export function App() {
 
     void (async () => {
       try {
-        const fresh = (await extractPaletteFromDataUrl(dataUrl, 5)).map(toSampledColor);
+        const fresh = (await extractPaletteFromDataUrl(dataUrl, paletteSize)).map(toSampledColor);
 
         // Merge rather than replace: keep colors the user added while
         // extraction was still running.
@@ -338,6 +349,8 @@ export function App() {
             onSavePalette={savePalette}
             onSelectColor={setActiveColorId}
             onSetColorRecipe={setWorkingColorRecipe}
+            onPaletteSizeChange={changePaletteSize}
+            paletteSize={paletteSize}
           />
         ) : null}
         {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}

@@ -551,6 +551,36 @@ h3 {
   margin-top: 14px;
 }
 
+.strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.palette-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.palette-size-value {
+  min-width: 1.2em;
+  text-align: center;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.parts-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.parts-step:disabled:hover {
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+
 .manual-add {
   margin-top: 16px;
 }
