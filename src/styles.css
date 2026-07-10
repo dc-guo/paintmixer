@@ -581,6 +581,45 @@ h3 {
   color: var(--ink-soft);
 }
 
+.swatch-hex {
+  display: block;
+}
+
+.swatch-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.bname-label {
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+  font-size: 0.82rem;
+}
+
+.color-tools {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reorder-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.reorder-controls .secondary-button {
+  flex: 1;
+}
+
+.color-label-input {
+  width: 100%;
+}
+
 .manual-add {
   margin-top: 16px;
 }

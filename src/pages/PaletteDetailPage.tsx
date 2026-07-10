@@ -16,6 +16,7 @@ type PaletteDetailPageProps = {
   palette: SavedPalette | null;
   ownedPaintIds: string[];
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onEdit: (palette: SavedPalette) => void;
   onSetColorRecipe: (paletteId: string, colorId: string, recipe: MixRecipe | null) => void;
@@ -101,6 +102,7 @@ export function PaletteDetailPage({
   palette,
   ownedPaintIds,
   onDelete,
+  onDuplicate,
   onRename,
   onEdit,
   onSetColorRecipe,
@@ -230,6 +232,13 @@ export function PaletteDetailPage({
             </button>
             <button
               className="secondary-button"
+              onClick={() => onDuplicate(palette.id)}
+              type="button"
+            >
+              Duplicate
+            </button>
+            <button
+              className="secondary-button"
               onClick={() => exportPaletteAsJson(palette, items, usage)}
               type="button"
             >
@@ -274,7 +283,10 @@ export function PaletteDetailPage({
                       </span>
                     ) : null}
                   </span>
-                  <span className="bname">{color.hex}</span>
+                  <span className="bname">
+                    {color.hex}
+                    {color.label ? <span className="bname-label">{color.label}</span> : null}
+                  </span>
                 </button>
               </li>
             );
@@ -299,7 +311,9 @@ export function PaletteDetailPage({
                         style={{ backgroundColor: color.hex }}
                       />
                       <span className="mix-row-main">
-                        <span className="mix-row-hex">{color.hex}</span>
+                        <span className="mix-row-hex">
+                          {color.label ? `${color.label} · ${color.hex}` : color.hex}
+                        </span>
                         <span className="mix-row-recipe">
                           {recipe
                             ? recipe.ingredients

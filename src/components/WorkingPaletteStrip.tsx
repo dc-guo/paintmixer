@@ -33,7 +33,10 @@ export function WorkingPaletteStrip({
               style={{ backgroundColor: color.hex }}
               type="button"
             >
-              <span className={light ? 'on-light' : 'on-dark'}>{color.hex}</span>
+              <span className={light ? 'on-light' : 'on-dark'}>
+                <span className="swatch-hex">{color.hex}</span>
+                {color.label ? <span className="swatch-label">{color.label}</span> : null}
+              </span>
             </button>
             <button
               aria-label={`Remove ${color.hex}`}

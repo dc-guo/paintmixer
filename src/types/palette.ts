@@ -6,6 +6,8 @@ export type SampledColor = {
   id: string;
   hex: string;
   source: ColorSource;
+  /** Optional user-given name for the color, e.g. "Sky". */
+  label?: string;
   /** Fractions (0–1) of image width/height; absent for manual colors. */
   position?: { x: number; y: number };
   /**

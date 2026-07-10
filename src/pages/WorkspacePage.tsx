@@ -48,6 +48,8 @@ type WorkspacePageProps = {
   onToggleOwnedPaint: (id: string) => void;
   paletteSize: number;
   onPaletteSizeChange: (next: number) => void;
+  onSetColorLabel: (id: string, label: string) => void;
+  onMoveColor: (id: string, delta: number) => void;
 };
 
 export function WorkspacePage({
@@ -67,6 +69,8 @@ export function WorkspacePage({
   onToggleOwnedPaint,
   paletteSize,
   onPaletteSizeChange,
+  onSetColorLabel,
+  onMoveColor,
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState(editingPaletteName ?? '');
   const [justSaved, setJustSaved] = useState<'saved' | 'updated' | null>(null);
@@ -79,6 +83,7 @@ export function WorkspacePage({
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [paintQuery, setPaintQuery] = useState('');
+  const [labelDraft, setLabelDraft] = useState('');
 
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
   const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
@@ -159,6 +164,11 @@ export function WorkspacePage({
   useEffect(() => {
     setPaletteName(editingPaletteName ?? '');
   }, [editingPaletteName]);
+
+  // Reseed the label field when the selected color changes.
+  useEffect(() => {
+    setLabelDraft(activeColor?.label ?? '');
+  }, [activeColor?.id, activeColor?.label]);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
@@ -306,6 +316,46 @@ export function WorkspacePage({
                     >
                       Add to palette
                     </button>
+                  </div>
+                ) : null}
+                {activeColor && !preview ? (
+                  <div className="color-tools">
+                    <label className="field-label" htmlFor="active-color-label">
+                      Name
+                    </label>
+                    <input
+                      className="color-label-input"
+                      id="active-color-label"
+                      onBlur={() => onSetColorLabel(activeColor.id, labelDraft)}
+                      onChange={(event) => setLabelDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          onSetColorLabel(activeColor.id, labelDraft);
+                          event.currentTarget.blur();
+                        }
+                      }}
+                      placeholder="e.g. Sky"
+                      value={labelDraft}
+                    />
+                    <div className="reorder-controls">
+                      <button
+                        className="secondary-button"
+                        disabled={colors[0]?.id === activeColor.id}
+                        onClick={() => onMoveColor(activeColor.id, -1)}
+                        type="button"
+                      >
+                        ← Move left
+                      </button>
+                      <button
+                        className="secondary-button"
+                        disabled={colors[colors.length - 1]?.id === activeColor.id}
+                        onClick={() => onMoveColor(activeColor.id, 1)}
+                        type="button"
+                      >
+                        Move right →
+                      </button>
+                    </div>
                   </div>
                 ) : null}
               </>

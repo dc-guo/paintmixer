@@ -85,3 +85,15 @@ test('buildPaletteSummary handles palettes without mixes', () => {
   assert.ok(summary.includes('Mark the paints you own in PaintBridge to get starter mixes.'));
   assert.ok(!summary.includes('from winter.png'));
 });
+
+test('buildPaletteSummary shows a color label before its hex', () => {
+  const color = { id: 'c1', hex: '#89C5F4', source: 'manual' as const, label: 'Sky' };
+  const palette = {
+    id: 'p1',
+    name: 'Test',
+    colors: [color],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+  const summary = buildPaletteSummary(palette, [{ color, recipe: null }], []);
+  assert.ok(summary.includes('1. Sky — #89C5F4'), summary);
+});

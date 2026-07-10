@@ -5,6 +5,7 @@ import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
 import type { ExtractedColor } from './lib/paletteExtraction';
+import { clonePalette, moveColorInList } from './lib/paletteEdits';
 import { createArtworkThumbnail } from './lib/thumbnails';
 import {
   clampPaletteSize,
@@ -230,6 +231,15 @@ export function App() {
     );
   };
 
+  const setWorkingColorLabel = (id: string, label: string) => {
+    const trimmed = label.trim();
+    setWorkingColors((current) =>
+      current.map((color) =>
+        color.id === id ? { ...color, label: trimmed || undefined } : color,
+      ),
+    );
+  };
+
   const setPaletteColorRecipe = (paletteId: string, colorId: string, recipe: MixRecipe | null) => {
     setSavedPalettes((current) =>
       current.map((palette) =>
@@ -250,6 +260,10 @@ export function App() {
   const removeColor = (id: string) => {
     setWorkingColors((current) => current.filter((color) => color.id !== id));
     setActiveColorId((current) => (current === id ? null : current));
+  };
+
+  const moveColor = (id: string, delta: number) => {
+    setWorkingColors((current) => moveColorInList(current, id, delta));
   };
 
   const savePalette = async (name: string) => {
@@ -323,6 +337,18 @@ export function App() {
     setSavedPalettes((current) => current.filter((palette) => palette.id !== id));
   };
 
+  const duplicatePalette = (id: string) => {
+    const original = savedPalettes.find((palette) => palette.id === id);
+
+    if (!original) {
+      return;
+    }
+
+    const copy = clonePalette(original, createId, new Date().toISOString());
+    setSavedPalettes((current) => [copy, ...current]);
+    window.location.hash = `#/palettes/${encodeURIComponent(copy.id)}`;
+  };
+
   return (
     <div className="app-shell">
       <header className="top-nav">
@@ -379,6 +405,8 @@ export function App() {
             onSavePalette={savePalette}
             onSelectColor={setActiveColorId}
             onSetColorRecipe={setWorkingColorRecipe}
+            onSetColorLabel={setWorkingColorLabel}
+            onMoveColor={moveColor}
             onPaletteSizeChange={changePaletteSize}
             paletteSize={paletteSize}
           />
@@ -386,10 +414,12 @@ export function App() {
         {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}
         {route.page === 'palette' ? (
           <PaletteDetailPage
+            key={route.paletteId}
             onDelete={(id) => {
               deletePalette(id);
               navigate('palettes');
             }}
+            onDuplicate={duplicatePalette}
             onEdit={editPalette}
             onRename={renamePalette}
             onSetColorRecipe={setPaletteColorRecipe}
