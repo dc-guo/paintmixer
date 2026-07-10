@@ -73,6 +73,8 @@ export function App() {
   const [ownedPaintIds, setOwnedPaintIds] = useState<string[]>(loadOwnedPaintIds);
   const [editingPaletteId, setEditingPaletteId] = useState<string | null>(null);
   const [paletteSize, setPaletteSize] = useState<number>(loadPaletteSize);
+  // Debounce timer for auto-applying palette-size changes to the artwork.
+  const regenTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(routeFromHash());
@@ -122,14 +124,31 @@ export function App() {
     const clamped = clampPaletteSize(next);
     setPaletteSize(clamped);
     persistPaletteSize(clamped);
+
+    // Auto-apply: re-extract at the new size. Debounced so rapid stepping
+    // re-extracts once at the size the user lands on, not on every tap.
+    if (!artwork) {
+      return;
+    }
+    const { dataUrl } = artwork;
+    if (regenTimerRef.current !== null) {
+      window.clearTimeout(regenTimerRef.current);
+    }
+    regenTimerRef.current = window.setTimeout(() => {
+      regenTimerRef.current = null;
+      void autoGeneratePalette(dataUrl, clamped);
+    }, 250);
   };
 
   /** Re-extracts the palette at the chosen size, replacing the auto-extracted
    * colors while keeping any the user added by hand. Returns the number of fresh
    * colors placed, or null when extraction failed. */
-  const autoGeneratePalette = async (dataUrl: string): Promise<number | null> => {
+  const autoGeneratePalette = async (
+    dataUrl: string,
+    size = paletteSize,
+  ): Promise<number | null> => {
     try {
-      const extracted = await extractPaletteFromDataUrl(dataUrl, paletteSize);
+      const extracted = await extractPaletteFromDataUrl(dataUrl, size);
       // Keep colors the user added by hex or by clicking the artwork; only the
       // previously auto-extracted colors are replaced by the fresh set.
       const kept = workingColors.filter((color) => color.source !== 'auto');
