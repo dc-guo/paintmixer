@@ -8,6 +8,8 @@ export type SampledColor = {
   source: ColorSource;
   /** Optional user-given name for the color, e.g. "Sky". */
   label?: string;
+  /** Freeform private annotation; never rendered on swatches or in the copy summary. */
+  notes?: string;
   /** Fractions (0–1) of image width/height; absent for manual colors. */
   position?: { x: number; y: number };
   /**

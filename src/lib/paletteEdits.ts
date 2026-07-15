@@ -1,6 +1,10 @@
 import type { SampledColor, SavedPalette } from '../types/palette';
 
-/** Trims a raw label input; a blank result normalizes to undefined (no label). */
+/**
+ * Trims a raw label or notes input; a blank (or whitespace-only) result
+ * normalizes to undefined. Shared by the label field and the notes field —
+ * trimming only the ends preserves internal newlines, which is all notes need.
+ */
 export function normalizeLabel(raw: string): string | undefined {
   const trimmed = raw.trim();
   return trimmed || undefined;

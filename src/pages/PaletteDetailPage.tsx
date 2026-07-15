@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { MixEditor } from '../components/MixEditor';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { formatRgb, hexToRgb, isLightColor } from '../lib/color';
+import { hexToRgb, isLightColor } from '../lib/color';
 import { formatPaletteMeta } from '../lib/format';
 import { CONFIDENCE_LABEL } from '../lib/paintMatching';
 import { aggregatePaintUsage } from '../lib/paintUsage';
@@ -293,14 +293,6 @@ export function PaletteDetailPage({
                   style={{ backgroundColor: color.hex }}
                   type="button"
                 >
-                  <span className="specs">
-                    {rgb ? (
-                      <span className="spec">
-                        <span className="k">RGB</span>
-                        <span className="v">{formatRgb(rgb)}</span>
-                      </span>
-                    ) : null}
-                  </span>
                   <span className="bname">
                     {color.hex}
                     {color.label ? <span className="bname-label">{color.label}</span> : null}
@@ -392,6 +384,9 @@ export function PaletteDetailPage({
                 />
                 <div>
                   <h2 className="target-name">{activeItem.color.hex}</h2>
+                  {activeItem.color.notes ? (
+                    <p className="quiet-note">{activeItem.color.notes}</p>
+                  ) : null}
                 </div>
               </div>
               <button

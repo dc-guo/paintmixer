@@ -8,7 +8,7 @@ import { MixEditor } from '../components/MixEditor';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { formatRgb, getPrintViability, hexToRgb } from '../lib/color';
+import { getPrintViability, hexToRgb } from '../lib/color';
 import { CONFIDENCE_LABEL, matchPaints } from '../lib/paintMatching';
 import { suggestMixes } from '../lib/recipeEngine';
 import { MAX_PALETTE_SIZE, MIN_PALETTE_SIZE } from '../lib/storage';
@@ -49,6 +49,7 @@ type WorkspacePageProps = {
   paletteSize: number;
   onPaletteSizeChange: (next: number) => void;
   onSetColorLabel: (id: string, label: string) => void;
+  onSetColorNotes: (id: string, notes: string) => void;
   onMoveColor: (id: string, delta: number) => void;
 };
 
@@ -70,6 +71,7 @@ export function WorkspacePage({
   paletteSize,
   onPaletteSizeChange,
   onSetColorLabel,
+  onSetColorNotes,
   onMoveColor,
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState(editingPaletteName ?? '');
@@ -84,6 +86,11 @@ export function WorkspacePage({
   const [preview, setPreview] = useState<Preview | null>(null);
   const [paintQuery, setPaintQuery] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  // Roving-focus targets for the compact reorder arrows (finding n=9): after a
+  // move, focus must land on a usable control, never on a disabled one or body.
+  const moveLeftRef = useRef<HTMLButtonElement | null>(null);
+  const moveRightRef = useRef<HTMLButtonElement | null>(null);
 
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
   const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
@@ -178,6 +185,39 @@ export function WorkspacePage({
   useEffect(() => {
     setLabelDraft(activeColor?.label ?? '');
   }, [activeColor?.id, activeColor?.label]);
+
+  // Reseed the notes field when the selected color changes.
+  useEffect(() => {
+    setNotesDraft(activeColor?.notes ?? '');
+  }, [activeColor?.id, activeColor?.notes]);
+
+  const isFirstColor = activeColor ? colors[0]?.id === activeColor.id : false;
+  const isLastColor = activeColor ? colors[colors.length - 1]?.id === activeColor.id : false;
+
+  // Compact reorder arrows use aria-disabled (not the disabled attribute) so
+  // they stay focusable — finding n=9: a real disabled attribute drops focus
+  // to <body> the instant the button disables itself under the user's own
+  // click. After a move, keep focus on the arrow just used if it will still
+  // be usable, otherwise hand focus to its sibling arrow.
+  const moveActiveColor = (delta: number) => {
+    if (!activeColor) {
+      return;
+    }
+
+    const isDisabled = delta < 0 ? isFirstColor : isLastColor;
+    if (isDisabled) {
+      return;
+    }
+
+    const currentIndex = colors.findIndex((color) => color.id === activeColor.id);
+    const nextIndex = Math.min(colors.length - 1, Math.max(0, currentIndex + delta));
+    onMoveColor(activeColor.id, delta);
+
+    const clickedRef = delta < 0 ? moveLeftRef : moveRightRef;
+    const siblingRef = delta < 0 ? moveRightRef : moveLeftRef;
+    const clickedStillUsable = delta < 0 ? nextIndex > 0 : nextIndex < colors.length - 1;
+    (clickedStillUsable ? clickedRef : siblingRef).current?.focus();
+  };
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
@@ -314,17 +354,35 @@ export function WorkspacePage({
                     className="target-chip"
                     style={{ backgroundColor: inspectedHex }}
                   />
-                  <div>
+                  <div className="target-info">
                     <h2 className="target-name">{inspectedHex}</h2>
                     <p className="target-from">{inspectedLabel}</p>
                   </div>
+                  {activeColor && !preview ? (
+                    <div className="inspector-arrows">
+                      <button
+                        aria-disabled={isFirstColor}
+                        aria-label="Move color left"
+                        className={isFirstColor ? 'parts-step inert' : 'parts-step'}
+                        onClick={() => moveActiveColor(-1)}
+                        ref={moveLeftRef}
+                        type="button"
+                      >
+                        ←
+                      </button>
+                      <button
+                        aria-disabled={isLastColor}
+                        aria-label="Move color right"
+                        className={isLastColor ? 'parts-step inert' : 'parts-step'}
+                        onClick={() => moveActiveColor(1)}
+                        ref={moveRightRef}
+                        type="button"
+                      >
+                        →
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-                <dl className="color-values">
-                  <div>
-                    <dt>RGB</dt>
-                    <dd>{formatRgb(inspectedRgb)}</dd>
-                  </div>
-                </dl>
                 <span className="outlook">{viability}</span>
                 {preview ? (
                   <div>
@@ -354,27 +412,21 @@ export function WorkspacePage({
                           event.currentTarget.blur();
                         }
                       }}
-                      placeholder="e.g. Sky"
+                      placeholder="sky, shadow under the awning, background wash…"
                       value={labelDraft}
                     />
-                    <div className="reorder-controls">
-                      <button
-                        className="secondary-button"
-                        disabled={colors[0]?.id === activeColor.id}
-                        onClick={() => onMoveColor(activeColor.id, -1)}
-                        type="button"
-                      >
-                        ← Move left
-                      </button>
-                      <button
-                        className="secondary-button"
-                        disabled={colors[colors.length - 1]?.id === activeColor.id}
-                        onClick={() => onMoveColor(activeColor.id, 1)}
-                        type="button"
-                      >
-                        Move right →
-                      </button>
-                    </div>
+                    <label className="field-label" htmlFor="active-color-notes">
+                      Notes
+                    </label>
+                    <textarea
+                      className="color-notes-input"
+                      id="active-color-notes"
+                      onBlur={() => onSetColorNotes(activeColor.id, notesDraft)}
+                      onChange={(event) => setNotesDraft(event.target.value)}
+                      placeholder="anything to remember — where it's used, how it mixed, what to tweak…"
+                      rows={3}
+                      value={notesDraft}
+                    />
                   </div>
                 ) : null}
               </>

@@ -580,12 +580,14 @@ h3 {
   color: var(--ink-soft);
 }
 
-.parts-step:disabled {
+.parts-step:disabled,
+.parts-step.inert {
   opacity: 0.4;
   cursor: default;
 }
 
-.parts-step:disabled:hover {
+.parts-step:disabled:hover,
+.parts-step.inert:hover {
   border-color: var(--line);
   color: var(--ink-soft);
 }
@@ -615,17 +617,29 @@ h3 {
   gap: 6px;
 }
 
-.reorder-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.reorder-controls .secondary-button {
-  flex: 1;
-}
-
 .color-label-input {
   width: 100%;
+}
+
+.color-notes-input {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+}
+
+.color-notes-input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.color-notes-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .manual-add {
@@ -661,6 +675,18 @@ h3 {
   gap: 16px;
 }
 
+.target-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspector-arrows {
+  display: flex;
+  align-self: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .target-chip {
   flex: none;
   width: 64px;
@@ -680,38 +706,6 @@ h3 {
   color: var(--ink-faint);
   font-style: italic;
   font-size: 0.85rem;
-}
-
-.color-values {
-  margin: 16px 0 0;
-}
-
-.color-values div {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.color-values div:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.color-values dt {
-  font-family: var(--sans);
-  font-size: 0.64rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.color-values dd {
-  margin: 0;
-  font-style: italic;
-  font-variant-numeric: tabular-nums;
 }
 
 .outlook {
@@ -1191,32 +1185,8 @@ h3 {
   color: rgba(64, 68, 72, 0.9);
 }
 
-.specs {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.spec {
-  line-height: 1.2;
-}
-
-.spec .k {
-  display: block;
-  font-family: var(--sans);
-  font-size: 0.56rem;
-  letter-spacing: 0.2em;
-  opacity: 0.75;
-}
-
-.spec .v {
-  font-family: var(--sans);
-  font-size: 0.66rem;
-  letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
-}
-
 .bname {
+  margin-top: auto;
   font-style: italic;
   font-size: 0.95rem;
   letter-spacing: 0.03em;

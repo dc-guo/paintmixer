@@ -192,10 +192,13 @@ export function App() {
   };
 
   /** Colors the replace-on-regen pass must never touch: manual/image picks,
-   * and auto colors the user has since invested in (named or given a mix). A
-   * plain auto-extracted swatch with neither is still disposable. */
+   * and auto colors the user has since invested in (named, noted, or given a
+   * mix). A plain auto-extracted swatch with none of those is still disposable. */
   const isKeepableColor = (color: SampledColor) =>
-    color.source !== 'auto' || Boolean(color.label) || Boolean(color.preferredRecipe);
+    color.source !== 'auto' ||
+    Boolean(color.label) ||
+    Boolean(color.notes) ||
+    Boolean(color.preferredRecipe);
 
   /** Re-extracts the palette at the chosen size, replacing the disposable
    * auto-extracted colors while keeping anything the user added by hand or
@@ -343,6 +346,13 @@ export function App() {
     const normalized = normalizeLabel(label);
     setWorkingColors((current) =>
       current.map((color) => (color.id === id ? { ...color, label: normalized } : color)),
+    );
+  };
+
+  const setWorkingColorNotes = (id: string, notes: string) => {
+    const normalized = normalizeLabel(notes);
+    setWorkingColors((current) =>
+      current.map((color) => (color.id === id ? { ...color, notes: normalized } : color)),
     );
   };
 
@@ -530,6 +540,7 @@ export function App() {
             onSelectColor={setActiveColorId}
             onSetColorRecipe={setWorkingColorRecipe}
             onSetColorLabel={setWorkingColorLabel}
+            onSetColorNotes={setWorkingColorNotes}
             onMoveColor={moveColor}
             onPaletteSizeChange={changePaletteSize}
             paletteSize={paletteSize}
