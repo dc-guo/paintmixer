@@ -146,8 +146,12 @@ export function WorkspacePage({
       added === null
         ? 'Could not read the artwork.'
         : added > 0
-          ? `Regenerated ${added} color${added === 1 ? '' : 's'} from the artwork.`
-          : 'No colors found in the artwork.',
+          ? // Count is the true inserted count: App's gen-guard already rules
+            // out the stale-extraction race that could otherwise overstate it.
+            `Regenerated ${added} color${added === 1 ? '' : 's'} from the artwork.`
+          : // added === 0 means extraction succeeded but every extracted hex
+            // was already kept — not that the artwork has no readable colors.
+            'Those colors are already in your palette.',
     );
   };
 
