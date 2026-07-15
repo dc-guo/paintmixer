@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { MixEditor } from '../components/MixEditor';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
@@ -117,20 +117,38 @@ export function PaletteDetailPage({
     [ownedPaintIds],
   );
 
-  const items = useMemo<PaletteItem[]>(
-    () =>
-      (palette?.colors ?? []).map((color) => {
-        if (color.preferredRecipe) {
-          return { color, recipe: color.preferredRecipe };
-        }
+  // suggestMixes is expensive (a full combinatorial search per color). The
+  // palette object gets a new identity on every recipe edit (parts steppers,
+  // alt-mix picks, reset in the MixEditor modal), which would otherwise
+  // recompute suggestions for every OTHER color on each click. Cache results
+  // keyed on (hex, owned-paint set): edits to one color's preferredRecipe
+  // don't change the cache key for the rest, so they hit the cache instead
+  // of re-searching. A bounded palette keeps the map small; entries made
+  // stale by an owned-paints change are simply never looked up again.
+  const suggestionCache = useRef(new Map<string, MixRecipe | null>());
 
-        const rgb = hexToRgb(color.hex);
-        const recipe =
-          rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
-        return { color, recipe };
-      }),
-    [palette, ownedPaints],
-  );
+  const items = useMemo<PaletteItem[]>(() => {
+    const ownedKey = ownedPaintIds.join(',');
+
+    return (palette?.colors ?? []).map((color) => {
+      if (color.preferredRecipe) {
+        return { color, recipe: color.preferredRecipe };
+      }
+
+      const cacheKey = `${color.hex}|${ownedKey}`;
+      const cache = suggestionCache.current;
+
+      if (cache.has(cacheKey)) {
+        return { color, recipe: cache.get(cacheKey) ?? null };
+      }
+
+      const rgb = hexToRgb(color.hex);
+      const recipe =
+        rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
+      cache.set(cacheKey, recipe);
+      return { color, recipe };
+    });
+  }, [palette, ownedPaints, ownedPaintIds]);
 
   const usage = useMemo(
     () =>

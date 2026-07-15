@@ -112,11 +112,16 @@ export function WorkspacePage({
   );
 
   // Preview colors aren't in the palette yet, so they get a read-only
-  // suggestion; palette colors get the full editor.
+  // suggestion; palette colors get the full editor. Same deferral pattern as
+  // deferredHex above: key the search on a deferred value so the marker and
+  // panel paint immediately on every click and the (expensive) search lands
+  // in the deferred pass, not the urgent one. Position isn't needed here.
+  const deferredPreviewHex = useDeferredValue(preview?.hex ?? null);
+
   const previewRecipe = useMemo(() => {
-    const rgb = preview ? hexToRgb(preview.hex) : null;
+    const rgb = deferredPreviewHex ? hexToRgb(deferredPreviewHex) : null;
     return rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
-  }, [preview, ownedPaints]);
+  }, [deferredPreviewHex, ownedPaints]);
 
   const inspectedLabel = preview
     ? 'previewing — not in palette'

@@ -91,11 +91,57 @@ export function App() {
   // (including base64 thumbnails) back to localStorage unchanged.
   const hasHydrated = useRef(false);
 
+  // Recipe edits (parts steppers, alt-mix picks) flow through setSavedPalettes
+  // on every click, and each write re-serializes every palette's color data
+  // plus every base64 artwork thumbnail. Debounce so a burst of clicks
+  // collapses into one write; a pending write is always flushed before the
+  // tab can go away (pagehide) or this component unmounts.
+  const savedPalettesRef = useRef(savedPalettes);
+  savedPalettesRef.current = savedPalettes;
+  const persistTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (hasHydrated.current) {
-      persistSavedPalettes(savedPalettes);
+    if (!hasHydrated.current) {
+      return;
     }
+
+    // Re-running because savedPalettes changed again inside the debounce
+    // window: cancel the stale timer (no flush here — that would defeat the
+    // debounce) and arm a fresh one for the latest value.
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
+    }
+
+    persistTimerRef.current = window.setTimeout(() => {
+      persistTimerRef.current = null;
+      persistSavedPalettes(savedPalettes);
+    }, 400);
+
+    return () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+      }
+    };
   }, [savedPalettes]);
+
+  // Mount-once: flush any pending debounced write immediately when the tab
+  // is closing (pagehide) or this component unmounts, so the last edits in a
+  // burst are never lost.
+  useEffect(() => {
+    const flushPendingWrite = () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+        persistSavedPalettes(savedPalettesRef.current);
+      }
+    };
+
+    window.addEventListener('pagehide', flushPendingWrite);
+    return () => {
+      window.removeEventListener('pagehide', flushPendingWrite);
+      flushPendingWrite();
+    };
+  }, []);
 
   useEffect(() => {
     if (hasHydrated.current) {
