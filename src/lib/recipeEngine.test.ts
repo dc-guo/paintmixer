@@ -20,6 +20,11 @@ const black = paint('mars-black', 'Mars Black', '#222222', 'opaque');
 const red = paint('primary-red', 'Primary Red', '#D22630', 'semi-transparent');
 const blue = paint('primary-blue', 'Primary Blue', '#0069B1', 'semi-transparent');
 const yellow = paint('primary-yellow', 'Primary Yellow', '#FFD200', 'semi-opaque');
+// A genuinely pale pigment, mirroring the dataset's Rose Pink. Strong primaries
+// dominate a mix even at 12:1 white, so a hue-preserving pale tint has to come
+// from a pale pigment — as it does in the real palette. Used by the pale-tint
+// test so it exercises real behavior rather than an unreachable target.
+const pink = paint('rose-pink', 'Rose Pink', '#ED96AC', 'opaque');
 
 test('suggestMixes returns nothing without owned paints', () => {
   assert.deepEqual(suggestMixes({ r: 128, g: 128, b: 128 }, []), []);
@@ -101,15 +106,31 @@ test('buildRecipe recomputes estimate, confidence, and notes for adjusted parts'
   const whiterRgb = hexToRgb(whiter.estimatedHex);
   assert.ok(evenRgb && whiterRgb);
   assert.ok(whiterRgb.r > evenRgb.r, 'more white lightens the estimate');
-  assert.ok(['high', 'medium', 'low'].includes(whiter.confidence));
+
+  // Concrete pins (measured against the current K-M model): the ratio change
+  // must recompute BOTH confidence and notes. At 1:1 the mix is far too dark
+  // for #5E5E5E (out of reach, low); at 12:1 it lands close (high). Each ratio
+  // carries the matching lightness note. These are specific enough to fail if
+  // buildRecipe stops recomputing confidence or notes.
+  assert.equal(even.confidence, 'low');
+  assert.equal(whiter.confidence, 'high');
+  assert.ok(
+    even.notes.includes('The target is lighter than this mix will likely reach.'),
+    `expected the "lighter than" note on the 1:1 mix, got: ${even.notes.join(' / ')}`,
+  );
+  assert.ok(
+    whiter.notes.includes('The target is darker than this mix will likely reach.'),
+    `expected the "darker than" note on the 12:1 mix, got: ${whiter.notes.join(' / ')}`,
+  );
 });
 
 test('pale tints are never answered with plain white', () => {
   // A pink target must carry its hue even when the exact lightness is out
-  // of reach — recommending white alone would be a lie.
+  // of reach — recommending white alone would be a lie. The winner here is a
+  // hue-preserving 12:1 white:rose-pink tint, not plain titanium white.
   const target = hexToRgb('#F0D8D8');
   assert.ok(target);
-  const recipes = suggestMixes(target, [white, black, red, blue, yellow], 3);
+  const recipes = suggestMixes(target, [white, black, red, blue, yellow, pink], 3);
   const best = recipes[0];
 
   assert.ok(

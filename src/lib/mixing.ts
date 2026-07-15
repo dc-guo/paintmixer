@@ -7,11 +7,14 @@
 // still an approximation, and the UI labels every result as such.
 //
 // Reflectance is clamped away from 0 so very dark paints produce large but
-// finite K/S. The floor is a tuning knob: lower means dark paints dominate
-// mixtures more aggressively. 0.06 keeps black believably dominant while
-// letting heavy white ratios actually tint colors toward pastels.
+// finite K/S (the (1-r)^2 / 2r map blows up as r → 0). MIN_REFLECTANCE is a
+// numerical guard, NOT a tuning knob: it is set below the darkest channel of
+// any real paint in the dataset (mars black's linear ≈ 0.016) so it never
+// caps a genuine mix — it only prevents a divide-by-zero on pure black. At
+// 0.005 the K/S cap is ≈ 99, well beyond any dataset pigment, so dark mixes
+// estimate as dark as their ingredients instead of flooring at a mid-gray.
 
-const MIN_REFLECTANCE = 0.06;
+const MIN_REFLECTANCE = 0.005;
 const MAX_REFLECTANCE = 0.99;
 
 /** Linear reflectance (0–1) → K/S. */

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { liquitexBasics } from '../data/liquitexBasics.js';
-import { getSaturation } from './color.js';
-import { linearToSrgb, rgbToLab, srgbToLinear } from './deltaE.js';
+import { getSaturation, hexToRgb, rgbToHex } from './color.js';
+import { labDistance, linearToSrgb, rgbToLab, srgbToLinear } from './deltaE.js';
 import { ksToLinear, linearToKS } from './mixing.js';
-import { estimateMix, suggestMixes } from './recipeEngine.js';
+import { buildRecipe, estimateMix, suggestMixes } from './recipeEngine.js';
 import type { Paint } from '../types/paint.js';
 import type { RGB } from '../types/color.js';
 
@@ -128,4 +128,123 @@ test('mostly-transparent mixes get a glaze note', () => {
     recipes[0].notes.some((note) => note.includes('glaze')),
     `expected a glaze note, got: ${recipes[0].notes.join(' / ')}`,
   );
+});
+
+test('a 1:1 transparent + opaque tint is not called a whole-mix glaze', () => {
+  // Half opaque titanium white — the most opaque paint in the range — covers
+  // solidly, so a 1:1 transparent-pigment + white tint is not "mostly
+  // transparent". Regression for the old inclusive `>= 0.5` threshold.
+  const ingredients = [
+    { paint: paint('dioxazine-purple'), parts: 1 },
+    { paint: paint('titanium-white'), parts: 1 },
+  ];
+  const recipe = buildRecipe(estimateMix(ingredients), ingredients);
+
+  assert.ok(
+    !recipe.notes.some((note) => note.includes('Mostly transparent')),
+    `1 dioxazine + 1 white should not get the whole-mix glaze note, got: ${recipe.notes.join(' / ')}`,
+  );
+  assert.ok(
+    recipe.notes.some((note) => note.includes('transparent — expect shifts when layering')),
+    `expected the per-paint transparency note instead, got: ${recipe.notes.join(' / ')}`,
+  );
+});
+
+test('dark mixes estimate as dark as their ingredients (no mid-gray floor)', () => {
+  // Regression for MIN_REFLECTANCE=0.06, which capped every multi-paint
+  // estimate at ~#454545 (L 29.3) — lighter than real blacks — and froze the
+  // ratio steppers. The lowered floor lets dark mixes stay dark and move.
+  const mars = paint('mars-black');
+  const ivory = paint('ivory-black');
+
+  const even = estimateMix([
+    { paint: mars, parts: 1 },
+    { paint: ivory, parts: 1 },
+  ]);
+  assert.ok(
+    rgbToLab(even).l <= 20,
+    `a black + black mix must stay genuinely dark, got L ${rgbToLab(even).l.toFixed(1)}`,
+  );
+
+  const moreMars = estimateMix([
+    { paint: mars, parts: 12 },
+    { paint: ivory, parts: 1 },
+  ]);
+  const moreIvory = estimateMix([
+    { paint: mars, parts: 1 },
+    { paint: ivory, parts: 12 },
+  ]);
+  assert.notEqual(
+    rgbToHex(moreMars),
+    rgbToHex(moreIvory),
+    '12:1 and 1:12 must produce different estimates so the steppers do something',
+  );
+});
+
+test('a reachable near-black target is not falsely warned as too dark', () => {
+  // 12:1 black:white trivially reaches #222222; the old floor estimated it as
+  // #474747 and stamped a backwards "target is darker than this mix" note.
+  const target = hexToRgb('#222222');
+  assert.ok(target);
+  const recipe = buildRecipe(target, [
+    { paint: paint('mars-black'), parts: 12 },
+    { paint: paint('titanium-white'), parts: 1 },
+  ]);
+
+  assert.ok(recipe.deltaE < 10, `near-black should be reachable, got deltaE ${recipe.deltaE}`);
+  assert.ok(
+    !recipe.notes.includes('The target is darker than this mix will likely reach.'),
+    `should not warn that a reachable near-black is out of reach, got: ${recipe.notes.join(' / ')}`,
+  );
+});
+
+test('tinting strength pulls a mix toward the stronger tinter', () => {
+  // Cloning one paint and varying only its tintingStrength isolates the
+  // `parts * tintingStrength` weighting: at equal parts the stronger tinter
+  // must sit measurably closer (Lab) to its own color. Deleting the
+  // multiplication makes the two clones identical and collapses this margin.
+  const base = paint('primary-red');
+  const white = paint('titanium-white');
+  const weakMix = estimateMix([
+    { paint: { ...base, tintingStrength: 1 }, parts: 1 },
+    { paint: white, parts: 1 },
+  ]);
+  const strongMix = estimateMix([
+    { paint: { ...base, tintingStrength: 2 }, parts: 1 },
+    { paint: white, parts: 1 },
+  ]);
+
+  const distWeak = labDistance(rgbToLab(weakMix), rgbToLab(base.rgb));
+  const distStrong = labDistance(rgbToLab(strongMix), rgbToLab(base.rgb));
+
+  assert.ok(
+    distStrong < distWeak - 1,
+    `strength 2 should land measurably closer to the red than strength 1 (strong ${distStrong.toFixed(2)} vs weak ${distWeak.toFixed(2)})`,
+  );
+});
+
+test('all-zero tinting strengths fall back to an equal-weight mix, not black', () => {
+  // A bad data entry (tintingStrength 0 on every ingredient) zeroes the total
+  // weight; the guard averages the ingredients equally instead of collapsing
+  // the estimate to #000000.
+  const red = paint('primary-red');
+  const blue = paint('primary-blue');
+  const zeroed = estimateMix([
+    { paint: { ...red, tintingStrength: 0 }, parts: 1 },
+    { paint: { ...blue, tintingStrength: 0 }, parts: 1 },
+  ]);
+  const equalWeight = estimateMix([
+    { paint: { ...red, tintingStrength: 1 }, parts: 1 },
+    { paint: { ...blue, tintingStrength: 1 }, parts: 1 },
+  ]);
+
+  assert.ok(
+    zeroed.r !== 0 || zeroed.g !== 0 || zeroed.b !== 0,
+    'a zero-strength mix must not collapse to pure black',
+  );
+  assert.ok(
+    Number.isFinite(zeroed.r) && Number.isFinite(zeroed.g) && Number.isFinite(zeroed.b),
+    'a zero-strength mix must stay a finite color',
+  );
+  assert.deepEqual(zeroed, equalWeight, 'zero strengths are treated as equal weights');
 });

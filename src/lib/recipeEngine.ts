@@ -88,7 +88,23 @@ function mixFromKS(entries: Array<{ ks: ChannelKS; weight: number }>): RGB {
   }
 
   if (total === 0) {
-    return { r: 0, g: 0, b: 0 };
+    // No weight at all. An empty list has nothing to average, so stay black;
+    // but a non-empty list whose every ingredient has tintingStrength 0 (a bad
+    // data entry) must not silently collapse the whole mix to pure black —
+    // fall back to an equal-weight average so the estimate stays a real color.
+    if (entries.length === 0) {
+      return { r: 0, g: 0, b: 0 };
+    }
+
+    r = 0;
+    g = 0;
+    b = 0;
+    for (const { ks } of entries) {
+      r += ks.r;
+      g += ks.g;
+      b += ks.b;
+    }
+    total = entries.length;
   }
 
   return {
@@ -163,8 +179,18 @@ function buildNotes(target: RGB, candidate: Candidate): string[] {
   const fullyTransparent = candidate.ingredients.find(
     ({ paint }) => paint.opacity === 'transparent',
   );
+  // A mix of nothing but transparent/semi-transparent paints always behaves
+  // like a glaze, whatever the ratio.
+  const allGlazy = candidate.ingredients.every(
+    ({ paint }) => paint.opacity === 'transparent' || paint.opacity === 'semi-transparent',
+  );
 
-  if (glazeParts / totalParts >= 0.5) {
+  // Warn about a whole-mix glaze only when transparent paint truly dominates
+  // (strictly more than half the weight) or when every ingredient is a glaze.
+  // An even split against an opaque paint — e.g. 1 dioxazine purple + 1
+  // titanium white, the most opaque paint in the range — covers solidly, so it
+  // falls through to the per-paint transparency note instead.
+  if (glazeParts > totalParts / 2 || allGlazy) {
     notes.push('Mostly transparent paints — expect a glaze that shifts over what is underneath.');
   } else if (fullyTransparent) {
     notes.push(`${fullyTransparent.paint.name} is transparent — expect shifts when layering.`);
