@@ -5,7 +5,7 @@ import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
 import type { ExtractedColor } from './lib/paletteExtraction';
-import { clonePalette, moveColorInList } from './lib/paletteEdits';
+import { clonePalette, moveColorInList, normalizeLabel } from './lib/paletteEdits';
 import { createArtworkThumbnail } from './lib/thumbnails';
 import {
   clampPaletteSize,
@@ -340,11 +340,9 @@ export function App() {
   };
 
   const setWorkingColorLabel = (id: string, label: string) => {
-    const trimmed = label.trim();
+    const normalized = normalizeLabel(label);
     setWorkingColors((current) =>
-      current.map((color) =>
-        color.id === id ? { ...color, label: trimmed || undefined } : color,
-      ),
+      current.map((color) => (color.id === id ? { ...color, label: normalized } : color)),
     );
   };
 

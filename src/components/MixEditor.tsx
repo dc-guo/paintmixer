@@ -51,6 +51,20 @@ export function MixEditor({
   const currentKey = recipeKey(current);
 
   const adjustParts = (paintId: string, delta: number) => {
+    const target = current.ingredients.find((ingredient) => ingredient.paintId === paintId);
+
+    if (!target) {
+      return;
+    }
+
+    const clamped = Math.min(12, Math.max(1, target.parts + delta));
+
+    // Already at the 1/12 clamp: nothing would change, so don't turn a live
+    // suggestion into a stored "Your mix" over a no-op click.
+    if (clamped === target.parts) {
+      return;
+    }
+
     const rgb = hexToRgb(targetHex);
 
     if (!rgb) {
@@ -63,10 +77,7 @@ export function MixEditor({
         ? [
             {
               paint,
-              parts:
-                ingredient.paintId === paintId
-                  ? Math.min(12, Math.max(1, ingredient.parts + delta))
-                  : ingredient.parts,
+              parts: ingredient.paintId === paintId ? clamped : ingredient.parts,
             },
           ]
         : [];
@@ -113,8 +124,13 @@ export function MixEditor({
         {current.ingredients.map((ingredient) => (
           <span className="mix-pill" key={ingredient.paintId}>
             <button
-              aria-label={`One part less ${ingredient.paintName}`}
+              aria-label={
+                ingredient.parts <= 1
+                  ? `${ingredient.paintName} is already at the minimum of 1 part`
+                  : `One part less ${ingredient.paintName}`
+              }
               className="parts-step"
+              disabled={ingredient.parts <= 1}
               onClick={() => adjustParts(ingredient.paintId, -1)}
               type="button"
             >
@@ -122,8 +138,13 @@ export function MixEditor({
             </button>
             <span className="parts">{ingredient.parts}</span>
             <button
-              aria-label={`One part more ${ingredient.paintName}`}
+              aria-label={
+                ingredient.parts >= 12
+                  ? `${ingredient.paintName} is already at the maximum of 12 parts`
+                  : `One part more ${ingredient.paintName}`
+              }
               className="parts-step"
+              disabled={ingredient.parts >= 12}
               onClick={() => adjustParts(ingredient.paintId, 1)}
               type="button"
             >

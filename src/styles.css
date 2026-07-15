@@ -195,6 +195,15 @@ h3 {
   border-color: var(--ink);
 }
 
+.secondary-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.secondary-button:disabled:hover {
+  border-color: var(--ink-faint);
+}
+
 .secondary-button.danger {
   color: var(--danger);
 }
@@ -590,7 +599,6 @@ h3 {
   margin-top: 2px;
   font-size: 0.72rem;
   font-style: italic;
-  opacity: 0.85;
 }
 
 .bname-label {

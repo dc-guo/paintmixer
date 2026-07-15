@@ -26,6 +26,24 @@ const yellow = paint('primary-yellow', 'Primary Yellow', '#FFD200', 'semi-opaque
 // test so it exercises real behavior rather than an unreachable target.
 const pink = paint('rose-pink', 'Rose Pink', '#ED96AC', 'opaque');
 
+function paintWithNotes(
+  id: string,
+  name: string,
+  hex: string,
+  opacity: PaintOpacity,
+  pigmentNotes: string,
+): Paint {
+  return { ...paint(id, name, hex, opacity), pigmentNotes };
+}
+
+const iridescentWhite = paintWithNotes(
+  'iridescent-white',
+  'Iridescent White',
+  '#EEEEE8',
+  'semi-opaque',
+  'iridescent — sheen not representable on screen',
+);
+
 test('suggestMixes returns nothing without owned paints', () => {
   assert.deepEqual(suggestMixes({ r: 128, g: 128, b: 128 }, []), []);
 });
@@ -140,6 +158,36 @@ test('pale tints are never answered with plain white', () => {
     `recipe should include a chromatic paint, got: ${best.ingredients
       .map((ingredient) => ingredient.paintId)
       .join(', ')}`,
+  );
+});
+
+test('a recipe including an iridescent/metallic/fluorescent paint carries the sheen caveat', () => {
+  const target = hexToRgb('#F0D8D8');
+  assert.ok(target);
+  const recipe = buildRecipe(target, [
+    { paint: iridescentWhite, parts: 12 },
+    { paint: pink, parts: 1 },
+  ]);
+
+  assert.ok(
+    recipe.notes.includes(
+      'Iridescent, metallic, or fluorescent paint — the sheen or glow will not match a flat color.',
+    ),
+    `expected the sheen caveat, got: ${recipe.notes.join(' / ')}`,
+  );
+});
+
+test('a recipe with no iridescent/metallic/fluorescent paint has no sheen caveat', () => {
+  const target = hexToRgb('#F0D8D8');
+  assert.ok(target);
+  const recipe = buildRecipe(target, [
+    { paint: white, parts: 12 },
+    { paint: pink, parts: 1 },
+  ]);
+
+  assert.ok(
+    !recipe.notes.some((note) => note.includes('sheen or glow')),
+    `expected no sheen caveat, got: ${recipe.notes.join(' / ')}`,
   );
 });
 

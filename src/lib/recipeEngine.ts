@@ -8,6 +8,19 @@ import { confidenceForDistance } from './paintMatching.js';
 /** Shared with the summary layer so single-paint phrasing stays in sync. */
 export const NOTE_STRAIGHT_FROM_TUBE = 'Straight from the tube.';
 
+const NOTE_SHEEN_CAVEAT =
+  'Iridescent, metallic, or fluorescent paint — the sheen or glow will not match a flat color.';
+
+// Metallic/iridescent/fluorescent seed entries all carry a pigmentNotes flag
+// naming the effect (see liquitexBasics.ts) — flat sRGB can't represent sheen
+// or glow, so a recipe using one needs a caveat even though it's still an
+// available mix base.
+const SHEEN_PATTERN = /iridescent|metallic|fluorescent/i;
+
+function hasSheenCaveat(paint: Paint) {
+  return SHEEN_PATTERN.test(paint.pigmentNotes ?? '');
+}
+
 export type MixIngredient = {
   paint: Paint;
   parts: number;
@@ -196,7 +209,16 @@ function buildNotes(target: RGB, candidate: Candidate): string[] {
     notes.push(`${fullyTransparent.paint.name} is transparent — expect shifts when layering.`);
   }
 
-  return notes.slice(0, 2);
+  const capped = notes.slice(0, 2);
+
+  // Always surfaced when applicable, on top of the 2-note cap above — the
+  // sheen/glow caveat is a safety-relevant approximation limit, not one of
+  // the interchangeable mixing tips.
+  if (candidate.ingredients.some(({ paint }) => hasSheenCaveat(paint))) {
+    capped.push(NOTE_SHEEN_CAVEAT);
+  }
+
+  return capped;
 }
 
 function toRecipe(target: RGB, candidate: Candidate): MixRecipe {

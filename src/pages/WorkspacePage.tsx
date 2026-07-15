@@ -254,17 +254,27 @@ export function WorkspacePage({
                       aria-label="Fewer colors"
                       className="parts-step"
                       disabled={paletteSize <= MIN_PALETTE_SIZE}
-                      onClick={() => onPaletteSizeChange(paletteSize - 1)}
+                      onClick={() => {
+                        const next = paletteSize - 1;
+                        onPaletteSizeChange(next);
+                        setAutoMessage(`Updating palette to ${next} colors…`);
+                      }}
                       type="button"
                     >
                       −
                     </button>
-                    <span className="palette-size-value">{paletteSize}</span>
+                    <span aria-live="polite" className="palette-size-value">
+                      {paletteSize}
+                    </span>
                     <button
                       aria-label="More colors"
                       className="parts-step"
                       disabled={paletteSize >= MAX_PALETTE_SIZE}
-                      onClick={() => onPaletteSizeChange(paletteSize + 1)}
+                      onClick={() => {
+                        const next = paletteSize + 1;
+                        onPaletteSizeChange(next);
+                        setAutoMessage(`Updating palette to ${next} colors…`);
+                      }}
                       type="button"
                     >
                       +

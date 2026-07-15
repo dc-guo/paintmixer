@@ -1,5 +1,11 @@
 import type { SampledColor, SavedPalette } from '../types/palette';
 
+/** Trims a raw label input; a blank result normalizes to undefined (no label). */
+export function normalizeLabel(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  return trimmed || undefined;
+}
+
 /**
  * Move the color with `id` by `delta` positions (clamped to the array bounds).
  * Returns a new array; returns the input unchanged if the id is missing or the
