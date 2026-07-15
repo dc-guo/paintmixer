@@ -41,7 +41,7 @@ export function moveColorInList(
 /**
  * Copy a saved palette for an independent duplicate: fresh palette id, fresh
  * per-color ids, a "Copy of …" name, and a caller-supplied timestamp. Colors are
- * shallow-copied (keeping hex/source/label/position/preferredRecipe) — safe
+ * shallow-copied (keeping hex/source/label/notes/position/preferredRecipe) — safe
  * because the app updates those fields immutably and save/reload fully separates them.
  */
 export function clonePalette(
