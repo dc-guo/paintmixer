@@ -842,6 +842,7 @@ Current approved decisions:
 12. (2026-07-07) SHIPPED: PaintBridge is LIVE at https://dc-guo.github.io/paintmixer/ on GitHub Pages. The repo is public (Diane approved; no LICENSE file = all rights reserved; commits use her GitHub noreply email going forward). Deploys: merge to `main` runs `.github/workflows/deploy.yml` (tests + typecheck + build). PRs run `.github/workflows/ci.yml`, and `main` is branch-protected requiring the `test` check.
 13. (2026-07-07) Expansion order: richer color tools FIRST, then accounts (Supabase auth with email verification and 2FA, cloud sync). See Section 19.
 14. (2026-07-07) Liquitex BASICS only — multi-brand support is explicitly out of scope (removes §17 item 9 from consideration).
+15. (2026-07-22) Phase 3 (Supabase accounts + sync) is TABLED — not cancelled, not next. The work is polishing and fixing Phase 2 until it is genuinely good. Do not start backend work, schema design, or auth scaffolding until Diane reopens it. `lib/storage.ts` stays the single persistence seam so the option is preserved at no cost.
 
 ---
 
@@ -863,7 +864,10 @@ The app is fully static (hash routing, no server), so any static host works with
 4. Extraction upgrades: user-selectable palette size, better clustering, per-region re-extraction.
 5. Palette tools: duplicate palette, reorder colors, name individual colors.
 
-## Phase 3 — Accounts & sync (Supabase)
+## Phase 3 — Accounts & sync (Supabase) — TABLED 2026-07-22
+
+Deferred indefinitely (decision #15). Kept here as a preserved option, not a queued phase; the
+current focus is Phase 2 polish. Everything below is the shape it would take if reopened.
 
 - Supabase auth: email + password with email verification, TOTP 2FA, transactional email.
 - Cloud sync of palettes and paint inventory (Postgres) behind the existing `lib/storage.ts` seam; the app stays usable signed-out (local-first), sign-in adds sync.
