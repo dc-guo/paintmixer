@@ -10,6 +10,7 @@ import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { getPrintViability, hexToRgb } from '../lib/color';
 import { CONFIDENCE_LABEL, matchPaints } from '../lib/paintMatching';
+import { normalizeLabel } from '../lib/paletteEdits';
 import { suggestMixes } from '../lib/recipeEngine';
 import { MAX_PALETTE_SIZE, MIN_PALETTE_SIZE } from '../lib/storage';
 import type { MixRecipe } from '../types/paint';
@@ -91,6 +92,7 @@ export function WorkspacePage({
   // move, focus must land on a usable control, never on a disabled one or body.
   const moveLeftRef = useRef<HTMLButtonElement | null>(null);
   const moveRightRef = useRef<HTMLButtonElement | null>(null);
+  const labelFocused = useRef(false);
 
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
   const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
@@ -181,10 +183,29 @@ export function WorkspacePage({
     setPaletteName(editingPaletteName ?? '');
   }, [editingPaletteName]);
 
-  // Reseed the label field when the selected color changes.
+  // Reseed the label field when the selected color changes. The field autosaves
+  // as you type, so while it has focus it owns its value: reseeding mid-keystroke
+  // would echo back the normalized (trimmed) label and eat trailing spaces.
   useEffect(() => {
+    if (labelFocused.current) {
+      return;
+    }
+
     setLabelDraft(activeColor?.label ?? '');
   }, [activeColor?.id, activeColor?.label]);
+
+  // Autosave the name. Debounced so a rename is one storage write, not one per
+  // keystroke; blur still saves immediately. The comparison is against the
+  // normalized draft because that is what gets stored — comparing raw text would
+  // re-fire forever on any name the normalizer trims.
+  useEffect(() => {
+    if (!activeColorId || normalizeLabel(labelDraft) === activeColor?.label) {
+      return;
+    }
+
+    const timer = setTimeout(() => onSetColorLabel(activeColorId, labelDraft), 400);
+    return () => clearTimeout(timer);
+  }, [labelDraft, activeColorId, activeColor?.label, onSetColorLabel]);
 
   // Reseed the notes field when the selected color changes.
   useEffect(() => {
@@ -266,7 +287,7 @@ export function WorkspacePage({
               preview={preview?.position ?? null}
             />
           ) : (
-            <div className="panel">
+            <div className="artwork-empty">
               <p className="eyebrow">Artwork</p>
               <ImageUploader onSelect={onArtworkSelected} />
             </div>
@@ -341,140 +362,177 @@ export function WorkspacePage({
               <ManualColorInput onSubmit={(hex) => onAddColor(hex, 'manual')} />
             </details>
           </div>
+
+          <article className="panel">
+            <p className="eyebrow">Project record</p>
+            <form className="save-form" onSubmit={(event) => void handleSave(event)}>
+              <input
+                aria-label="Palette name"
+                onChange={(event) => setPaletteName(event.target.value)}
+                placeholder="Palette name"
+                value={paletteName}
+              />
+              <div className="save-row">
+                <button
+                  className="primary-button"
+                  disabled={colors.length === 0 || isSaving}
+                  type="submit"
+                >
+                  {isSaving ? 'Saving…' : editingPaletteName ? 'Update palette' : 'Save palette'}
+                </button>
+                {justSaved ? (
+                  <span className="save-confirm" role="status">
+                    ✓ {justSaved === 'updated' ? 'Updated' : 'Saved'} — <a href="#/palettes">view</a>
+                  </span>
+                ) : null}
+              </div>
+            </form>
+            {editingPaletteName && !justSaved ? (
+              <p className="quiet-note">Editing "{editingPaletteName}" — saving updates it.</p>
+            ) : null}
+          </article>
         </section>
 
         <aside className="workspace-column" aria-label="Color inspector">
-          <article className="panel">
-            <p className="eyebrow">Selected color</p>
-            {inspectedHex && inspectedRgb && viability ? (
-              <>
-                <div className="target-head">
-                  <div
-                    aria-label={`Selected color ${inspectedHex}`}
-                    className="target-chip"
-                    style={{ backgroundColor: inspectedHex }}
-                  />
-                  <div className="target-info">
-                    <h2 className="target-name">{inspectedHex}</h2>
-                    <p className="target-from">{inspectedLabel}</p>
+          <div className="inspector-top">
+            <article className="panel">
+              <p className="eyebrow">Selected color</p>
+              {inspectedHex && inspectedRgb && viability ? (
+                <>
+                  <div className="target-head">
+                    <div
+                      aria-label={`Selected color ${inspectedHex}`}
+                      className="target-chip"
+                      style={{ backgroundColor: inspectedHex }}
+                    />
+                    <div className="target-info">
+                      {activeColor && !preview ? (
+                        <input
+                          aria-label="Color name"
+                          className="target-name-field"
+                          id="active-color-label"
+                          onBlur={() => {
+                            labelFocused.current = false;
+                            onSetColorLabel(activeColor.id, labelDraft);
+                            // Settle the field to what was actually stored.
+                            setLabelDraft(normalizeLabel(labelDraft) ?? '');
+                          }}
+                          onChange={(event) => setLabelDraft(event.target.value)}
+                          onFocus={() => {
+                            labelFocused.current = true;
+                          }}
+                          placeholder="name…"
+                          value={labelDraft}
+                        />
+                      ) : (
+                        <h2 className="target-name">{inspectedHex}</h2>
+                      )}
+                      <p className="target-from">
+                        {activeColor && !preview
+                          ? `${inspectedHex} · ${inspectedLabel}`
+                          : inspectedLabel}
+                      </p>
+                    </div>
+                    {activeColor && !preview ? (
+                      <div className="inspector-arrows">
+                        <button
+                          aria-disabled={isFirstColor}
+                          aria-label="Move color left"
+                          className={isFirstColor ? 'parts-step inert' : 'parts-step'}
+                          onClick={() => moveActiveColor(-1)}
+                          ref={moveLeftRef}
+                          type="button"
+                        >
+                          ←
+                        </button>
+                        <button
+                          aria-disabled={isLastColor}
+                          aria-label="Move color right"
+                          className={isLastColor ? 'parts-step inert' : 'parts-step'}
+                          onClick={() => moveActiveColor(1)}
+                          ref={moveRightRef}
+                          type="button"
+                        >
+                          →
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-                  {activeColor && !preview ? (
-                    <div className="inspector-arrows">
+                  <p className="viability-note">{viability}</p>
+                  {preview ? (
+                    <div>
                       <button
-                        aria-disabled={isFirstColor}
-                        aria-label="Move color left"
-                        className={isFirstColor ? 'parts-step inert' : 'parts-step'}
-                        onClick={() => moveActiveColor(-1)}
-                        ref={moveLeftRef}
+                        className="secondary-button"
+                        onClick={addPreviewToPalette}
                         type="button"
                       >
-                        ←
-                      </button>
-                      <button
-                        aria-disabled={isLastColor}
-                        aria-label="Move color right"
-                        className={isLastColor ? 'parts-step inert' : 'parts-step'}
-                        onClick={() => moveActiveColor(1)}
-                        ref={moveRightRef}
-                        type="button"
-                      >
-                        →
+                        Add to palette
                       </button>
                     </div>
                   ) : null}
-                </div>
-                <span className="outlook">{viability}</span>
-                {preview ? (
-                  <div>
-                    <button
-                      className="secondary-button"
-                      onClick={addPreviewToPalette}
-                      type="button"
-                    >
-                      Add to palette
-                    </button>
-                  </div>
-                ) : null}
-                {activeColor && !preview ? (
-                  <div className="color-tools">
-                    <label className="field-label" htmlFor="active-color-label">
-                      Name
-                    </label>
-                    <input
-                      className="color-label-input"
-                      id="active-color-label"
-                      onBlur={() => onSetColorLabel(activeColor.id, labelDraft)}
-                      onChange={(event) => setLabelDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          onSetColorLabel(activeColor.id, labelDraft);
-                          event.currentTarget.blur();
-                        }
-                      }}
-                      placeholder="sky, shadow under the awning, background wash…"
-                      value={labelDraft}
-                    />
-                    <label className="field-label" htmlFor="active-color-notes">
-                      Notes
-                    </label>
-                    <textarea
-                      className="color-notes-input"
-                      id="active-color-notes"
-                      onBlur={() => onSetColorNotes(activeColor.id, notesDraft)}
-                      onChange={(event) => setNotesDraft(event.target.value)}
-                      placeholder="anything to remember — where it's used, how it mixed, what to tweak…"
-                      rows={3}
-                      value={notesDraft}
-                    />
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <p className="empty-state">
-                Click the artwork to preview a color, or drag a marker to re-sample one.
-              </p>
-            )}
-          </article>
+                  {activeColor && !preview ? (
+                    <div className="color-tools">
+                      <label className="field-label" htmlFor="active-color-notes">
+                        Notes
+                      </label>
+                      <textarea
+                        className="color-notes-input"
+                        id="active-color-notes"
+                        onBlur={() => onSetColorNotes(activeColor.id, notesDraft)}
+                        onChange={(event) => setNotesDraft(event.target.value)}
+                        placeholder="anything to remember — where it's used, how it mixed, what to tweak…"
+                        rows={1}
+                        value={notesDraft}
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className="empty-state">
+                  Click the artwork to preview a color, or drag a marker to re-sample one.
+                </p>
+              )}
+            </article>
 
-          <article className="panel">
-            <p className="eyebrow">Closest Liquitex BASICS</p>
-            {matches.length > 0 ? (
-              <ul className="match-list">
-                {matches.map((match) => (
-                  <li className="match-row" key={match.paint.id}>
-                    <span
-                      aria-hidden
-                      className="match-dot"
-                      style={{ backgroundColor: match.paint.hex }}
-                    />
-                    <span className="match-name">
-                      <span className="n">{match.paint.name}</span>
-                      <span className="d">
-                        {ownedPaintIds.includes(match.paint.id) ? (
-                          <span className="owned-mark">owned</span>
-                        ) : (
-                          'not owned'
-                        )}
+            <article className="panel">
+              <p className="eyebrow">Closest Liquitex BASICS</p>
+              {matches.length > 0 ? (
+                <ul className="match-list">
+                  {matches.map((match) => (
+                    <li className="match-row" key={match.paint.id}>
+                      <span
+                        aria-hidden
+                        className="match-dot"
+                        style={{ backgroundColor: match.paint.hex }}
+                      />
+                      <span className="match-name">
+                        <span className="n">{match.paint.name}</span>
+                        <span className="d">
+                          {ownedPaintIds.includes(match.paint.id) ? (
+                            <span className="owned-mark">owned</span>
+                          ) : (
+                            'not owned'
+                          )}
+                        </span>
                       </span>
-                    </span>
-                    <span className={`match-tag ${CONFIDENCE_LABEL[match.confidence]}`}>
-                      {CONFIDENCE_LABEL[match.confidence]}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="empty-state">Select a color to see the closest paints.</p>
-            )}
-            <button
-              className="secondary-button"
-              onClick={() => setIsInventoryOpen(true)}
-              type="button"
-            >
-              Edit my paints · {ownedPaintIds.length}
-            </button>
-          </article>
+                      <span className={`match-tag ${CONFIDENCE_LABEL[match.confidence]}`}>
+                        {CONFIDENCE_LABEL[match.confidence]}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="empty-state">Select a color to see the closest paints.</p>
+              )}
+              <button
+                className="secondary-button"
+                onClick={() => setIsInventoryOpen(true)}
+                type="button"
+              >
+                Edit my paints · {ownedPaintIds.length}
+              </button>
+            </article>
+          </div>
 
           <article className="panel">
             <p className="eyebrow">Starter mix</p>
@@ -513,34 +571,6 @@ export function WorkspacePage({
             ) : null}
           </article>
 
-          <article className="panel">
-            <p className="eyebrow">Project record</p>
-            <form className="save-form" onSubmit={(event) => void handleSave(event)}>
-              <input
-                aria-label="Palette name"
-                onChange={(event) => setPaletteName(event.target.value)}
-                placeholder="Palette name"
-                value={paletteName}
-              />
-              <div className="save-row">
-                <button
-                  className="primary-button"
-                  disabled={colors.length === 0 || isSaving}
-                  type="submit"
-                >
-                  {isSaving ? 'Saving…' : editingPaletteName ? 'Update palette' : 'Save palette'}
-                </button>
-                {justSaved ? (
-                  <span className="save-confirm" role="status">
-                    ✓ {justSaved === 'updated' ? 'Updated' : 'Saved'} — <a href="#/palettes">view</a>
-                  </span>
-                ) : null}
-              </div>
-            </form>
-            {editingPaletteName && !justSaved ? (
-              <p className="quiet-note">Editing "{editingPaletteName}" — saving updates it.</p>
-            ) : null}
-          </article>
         </aside>
       </div>
 

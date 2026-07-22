@@ -316,6 +316,12 @@ h3 {
   margin: 36px auto 0;
 }
 
+/* The dashed dropzone IS the box here — wrapping it in a .panel card produced
+   two nested outlines that read as unrelated. */
+.artwork-empty .dropzone {
+  border-radius: 20px;
+}
+
 .dropzone {
   display: flex;
   flex-direction: column;
@@ -430,7 +436,7 @@ h3 {
 
 .workspace-columns {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
   gap: 24px;
 }
 
@@ -438,6 +444,15 @@ h3 {
   display: grid;
   gap: 20px;
   align-content: start;
+}
+
+/* Selected colour and Closest BASICS sit side by side above the mix panel,
+   which spans the full column — the mix is the reason the page exists. */
+.inspector-top {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
 }
 
 .artwork-frame {
@@ -617,8 +632,18 @@ h3 {
   gap: 6px;
 }
 
-.color-label-input {
+/* The name is the headline now — it takes the slot the hex used to occupy, so
+   it matches .target-name's size. The hex moved to the subline. */
+.target-name-field {
   width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-style: italic;
+  letter-spacing: 0.02em;
 }
 
 .color-notes-input {
@@ -629,14 +654,17 @@ h3 {
   padding: 10px 14px;
   background: var(--card);
   color: var(--ink);
-  font: inherit;
+  /* Matches "Edit my paints" in the panel alongside. */
+  font-size: 0.88rem;
 }
 
+.target-name-field::placeholder,
 .color-notes-input::placeholder {
   color: var(--ink-faint);
   font-style: italic;
 }
 
+.target-name-field:focus,
 .color-notes-input:focus {
   outline: none;
   border-color: var(--accent);
@@ -715,6 +743,15 @@ h3 {
   padding: 7px 16px;
   background: var(--clay-wash);
   color: var(--clay);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* Same quiet register as the notes under a mix — the pill cost more vertical
+   space than the remark is worth. */
+.viability-note {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
   font-style: italic;
   font-size: 0.85rem;
 }
@@ -1405,6 +1442,10 @@ h3 {
 
 @media (max-width: 860px) {
   .workspace-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .inspector-top {
     grid-template-columns: 1fr;
   }
 
