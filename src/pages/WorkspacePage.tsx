@@ -105,7 +105,7 @@ export function WorkspacePage({
 
   const matches = useMemo(() => {
     const rgb = deferredHex ? hexToRgb(deferredHex) : null;
-    return rgb ? matchPaints(rgb, liquitexBasics, 4) : [];
+    return rgb ? matchPaints(rgb, liquitexBasics, 3) : [];
   }, [deferredHex]);
 
   const filteredPaints = useMemo(() => {
@@ -481,7 +481,6 @@ export function WorkspacePage({
                         onBlur={() => onSetColorNotes(activeColor.id, notesDraft)}
                         onChange={(event) => setNotesDraft(event.target.value)}
                         placeholder="anything to remember — where it's used, how it mixed, what to tweak…"
-                        rows={1}
                         value={notesDraft}
                       />
                     </div>
@@ -495,7 +494,16 @@ export function WorkspacePage({
             </article>
 
             <article className="panel">
-              <p className="eyebrow">Closest Liquitex BASICS</p>
+              <div className="panel-head">
+                <p className="eyebrow">Closest Liquitex BASICS</p>
+                <button
+                  className="text-button"
+                  onClick={() => setIsInventoryOpen(true)}
+                  type="button"
+                >
+                  Edit paints · {ownedPaintIds.length}
+                </button>
+              </div>
               {matches.length > 0 ? (
                 <ul className="match-list">
                   {matches.map((match) => (
@@ -524,13 +532,6 @@ export function WorkspacePage({
               ) : (
                 <p className="empty-state">Select a color to see the closest paints.</p>
               )}
-              <button
-                className="secondary-button"
-                onClick={() => setIsInventoryOpen(true)}
-                type="button"
-              >
-                Edit my paints · {ownedPaintIds.length}
-              </button>
             </article>
           </div>
 

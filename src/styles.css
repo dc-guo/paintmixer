@@ -447,12 +447,54 @@ h3 {
 }
 
 /* Selected colour and Closest BASICS sit side by side above the mix panel,
-   which spans the full column — the mix is the reason the page exists. */
+   which spans the full column — the mix is the reason the page exists.
+   Both halves stretch to the same height; the Notes box in the Selected panel
+   flexes to fill, so the two columns stay level without hardcoded heights. */
 .inspector-top {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   align-items: stretch;
+}
+
+.inspector-top > .panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.inspector-top .color-tools {
+  flex: 1;
+  min-height: 0;
+}
+
+.inspector-top .color-notes-input {
+  flex: 1;
+  min-height: 52px;
+}
+
+/* Panel title with an action tucked into the top-right corner. */
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.text-button {
+  border: none;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.text-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .artwork-frame {
@@ -632,29 +674,31 @@ h3 {
   gap: 6px;
 }
 
-/* The name is the headline now — it takes the slot the hex used to occupy, so
-   it matches .target-name's size. The hex moved to the subline. */
+/* The name is the headline — it sits where the hex used to, but compact so the
+   whole inspector stays short. */
 .target-name-field {
   width: 100%;
+  max-width: 200px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 6px 12px;
+  border-radius: 12px;
+  padding: 5px 11px;
   background: var(--card);
   color: var(--ink);
-  font-size: 1.35rem;
+  font-size: 1.05rem;
   font-style: italic;
   letter-spacing: 0.02em;
 }
 
 .color-notes-input {
   width: 100%;
-  resize: vertical;
+  /* It scrolls, so no drag handle — widening it would break the two-column row. */
+  resize: none;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px 14px;
   background: var(--card);
   color: var(--ink);
-  /* Matches "Edit my paints" in the panel alongside. */
+  /* Matches "Edit paints" in the panel alongside. */
   font-size: 0.88rem;
 }
 
