@@ -92,7 +92,6 @@ export function WorkspacePage({
   // move, focus must land on a usable control, never on a disabled one or body.
   const moveLeftRef = useRef<HTMLButtonElement | null>(null);
   const moveRightRef = useRef<HTMLButtonElement | null>(null);
-  const labelFocused = useRef(false);
 
   const activeColor = colors.find((color) => color.id === activeColorId) ?? null;
   const inspectedHex = preview ? preview.hex : activeColor?.hex ?? null;
@@ -183,16 +182,16 @@ export function WorkspacePage({
     setPaletteName(editingPaletteName ?? '');
   }, [editingPaletteName]);
 
-  // Reseed the label field when the selected color changes. The field autosaves
-  // as you type, so while it has focus it owns its value: reseeding mid-keystroke
-  // would echo back the normalized (trimmed) label and eat trailing spaces.
+  // Reseed the label field only when the *selected color* changes — deliberately
+  // not when its label changes. The field autosaves as you type; our own write
+  // updates activeColor.label, and reseeding on that would echo the normalized
+  // (trimmed) value straight back into the box and eat trailing spaces mid-word.
+  // Keying on id alone also means a focused field is never yanked out from under
+  // the user, so no focus-tracking ref is needed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (labelFocused.current) {
-      return;
-    }
-
     setLabelDraft(activeColor?.label ?? '');
-  }, [activeColor?.id, activeColor?.label]);
+  }, [activeColor?.id]);
 
   // Autosave the name. Debounced so a rename is one storage write, not one per
   // keystroke; blur still saves immediately. The comparison is against the
@@ -437,17 +436,12 @@ export function WorkspacePage({
                         <input
                           aria-label="Color name"
                           className="target-name-field"
-                          id="active-color-label"
                           onBlur={() => {
-                            labelFocused.current = false;
                             onSetColorLabel(activeColor.id, labelDraft);
                             // Settle the field to what was actually stored.
                             setLabelDraft(normalizeLabel(labelDraft) ?? '');
                           }}
                           onChange={(event) => setLabelDraft(event.target.value)}
-                          onFocus={() => {
-                            labelFocused.current = true;
-                          }}
                           placeholder="name…"
                           value={labelDraft}
                         />

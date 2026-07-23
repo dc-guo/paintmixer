@@ -74,6 +74,10 @@ export function WorkingPaletteStrip({
 
         const isFirst = index === 0;
         const isLast = index === colors.length - 1;
+        // The strip is a single tab stop (roving tabindex). The per-swatch
+        // controls join the tab order only for the swatch that IS the stop,
+        // so Tab doesn't wade through 3 controls on every colour.
+        const controlTabIndex = index === tabStopIndex ? 0 : -1;
 
         return (
           <li key={color.id}>
@@ -105,6 +109,7 @@ export function WorkingPaletteStrip({
                     onMove(color.id, -1);
                   }
                 }}
+                tabIndex={controlTabIndex}
                 type="button"
               >
                 ‹
@@ -118,6 +123,7 @@ export function WorkingPaletteStrip({
                     onMove(color.id, 1);
                   }
                 }}
+                tabIndex={controlTabIndex}
                 type="button"
               >
                 ›
@@ -127,6 +133,7 @@ export function WorkingPaletteStrip({
               aria-label={`Remove ${color.hex}`}
               className="swatch-remove"
               onClick={() => onRemove(color.id)}
+              tabIndex={controlTabIndex}
               type="button"
             >
               ×

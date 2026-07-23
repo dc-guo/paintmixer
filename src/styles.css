@@ -670,6 +670,16 @@ h3 {
   opacity: 1;
 }
 
+/* Touch devices have no hover, and tapping a button doesn't reliably reveal
+   controls via :focus — so on coarse pointers keep remove and reorder visible.
+   These are the only affordances for removing/reordering a colour. */
+@media (hover: none) {
+  .swatch-remove,
+  .swatch-reorder {
+    opacity: 1;
+  }
+}
+
 .strip-caption {
   display: flex;
   justify-content: space-between;
@@ -837,17 +847,6 @@ h3 {
 .target-from {
   margin: 3px 0 0;
   color: var(--ink-faint);
-  font-style: italic;
-  font-size: 0.85rem;
-}
-
-.outlook {
-  display: inline-block;
-  margin-top: 16px;
-  border-radius: 999px;
-  padding: 7px 16px;
-  background: var(--clay-wash);
-  color: var(--clay);
   font-style: italic;
   font-size: 0.85rem;
 }
