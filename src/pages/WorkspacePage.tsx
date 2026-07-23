@@ -397,7 +397,33 @@ export function WorkspacePage({
         <aside className="workspace-column" aria-label="Color inspector">
           <div className="inspector-top">
             <article className="panel">
-              <p className="eyebrow">Selected color</p>
+              <div className="panel-head">
+                <p className="eyebrow">Selected color</p>
+                {activeColor && !preview ? (
+                  <div className="inspector-arrows">
+                    <button
+                      aria-disabled={isFirstColor}
+                      aria-label="Previous color"
+                      className={isFirstColor ? 'parts-step inert' : 'parts-step'}
+                      onClick={() => navigateColor(-1)}
+                      ref={moveLeftRef}
+                      type="button"
+                    >
+                      ←
+                    </button>
+                    <button
+                      aria-disabled={isLastColor}
+                      aria-label="Next color"
+                      className={isLastColor ? 'parts-step inert' : 'parts-step'}
+                      onClick={() => navigateColor(1)}
+                      ref={moveRightRef}
+                      type="button"
+                    >
+                      →
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               {inspectedHex && inspectedRgb && viability ? (
                 <>
                   <div className="target-head">
@@ -434,30 +460,6 @@ export function WorkspacePage({
                           : inspectedLabel}
                       </p>
                     </div>
-                    {activeColor && !preview ? (
-                      <div className="inspector-arrows">
-                        <button
-                          aria-disabled={isFirstColor}
-                          aria-label="Previous color"
-                          className={isFirstColor ? 'parts-step inert' : 'parts-step'}
-                          onClick={() => navigateColor(-1)}
-                          ref={moveLeftRef}
-                          type="button"
-                        >
-                          ←
-                        </button>
-                        <button
-                          aria-disabled={isLastColor}
-                          aria-label="Next color"
-                          className={isLastColor ? 'parts-step inert' : 'parts-step'}
-                          onClick={() => navigateColor(1)}
-                          ref={moveRightRef}
-                          type="button"
-                        >
-                          →
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
                   <p className="viability-note">{viability}</p>
                   {preview ? (

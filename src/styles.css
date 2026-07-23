@@ -475,9 +475,17 @@ h3 {
 /* Panel title with an action tucked into the top-right corner. */
 .panel-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 28px;
+  margin-bottom: 12px;
+}
+
+/* The eyebrow carries its own 12px bottom gap elsewhere; inside the head row
+   the flex layout owns spacing, so drop it to keep the row tight. */
+.panel-head .eyebrow {
+  margin-bottom: 0;
 }
 
 .text-button {
