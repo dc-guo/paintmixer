@@ -215,24 +215,24 @@ export function WorkspacePage({
   const isFirstColor = activeColor ? colors[0]?.id === activeColor.id : false;
   const isLastColor = activeColor ? colors[colors.length - 1]?.id === activeColor.id : false;
 
-  // Compact reorder arrows use aria-disabled (not the disabled attribute) so
-  // they stay focusable — finding n=9: a real disabled attribute drops focus
-  // to <body> the instant the button disables itself under the user's own
-  // click. After a move, keep focus on the arrow just used if it will still
-  // be usable, otherwise hand focus to its sibling arrow.
-  const moveActiveColor = (delta: number) => {
+  // The chip arrows step the selection to the previous/next color. They use
+  // aria-disabled (not the disabled attribute) so they stay focusable — a real
+  // disabled attribute drops focus to <body> the instant the button disables
+  // itself under the user's own click. On reaching an end, hand focus to the
+  // still-usable sibling arrow so keyboard stepping can continue.
+  const navigateColor = (delta: number) => {
     if (!activeColor) {
       return;
     }
 
-    const isDisabled = delta < 0 ? isFirstColor : isLastColor;
-    if (isDisabled) {
+    const atEnd = delta < 0 ? isFirstColor : isLastColor;
+    if (atEnd) {
       return;
     }
 
     const currentIndex = colors.findIndex((color) => color.id === activeColor.id);
     const nextIndex = Math.min(colors.length - 1, Math.max(0, currentIndex + delta));
-    onMoveColor(activeColor.id, delta);
+    selectColor(colors[nextIndex].id);
 
     const clickedRef = delta < 0 ? moveLeftRef : moveRightRef;
     const siblingRef = delta < 0 ? moveRightRef : moveLeftRef;
@@ -297,6 +297,7 @@ export function WorkspacePage({
             <WorkingPaletteStrip
               activeColorId={preview ? null : activeColorId}
               colors={colors}
+              onMove={onMoveColor}
               onRemove={onRemoveColor}
               onSelect={selectColor}
             />
@@ -437,9 +438,9 @@ export function WorkspacePage({
                       <div className="inspector-arrows">
                         <button
                           aria-disabled={isFirstColor}
-                          aria-label="Move color left"
+                          aria-label="Previous color"
                           className={isFirstColor ? 'parts-step inert' : 'parts-step'}
-                          onClick={() => moveActiveColor(-1)}
+                          onClick={() => navigateColor(-1)}
                           ref={moveLeftRef}
                           type="button"
                         >
@@ -447,9 +448,9 @@ export function WorkspacePage({
                         </button>
                         <button
                           aria-disabled={isLastColor}
-                          aria-label="Move color right"
+                          aria-label="Next color"
                           className={isLastColor ? 'parts-step inert' : 'parts-step'}
-                          onClick={() => moveActiveColor(1)}
+                          onClick={() => navigateColor(1)}
                           ref={moveRightRef}
                           type="button"
                         >

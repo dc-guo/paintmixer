@@ -8,6 +8,7 @@ type WorkingPaletteStripProps = {
   activeColorId: string | null;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
+  onMove: (id: string, delta: number) => void;
 };
 
 export function WorkingPaletteStrip({
@@ -15,6 +16,7 @@ export function WorkingPaletteStrip({
   activeColorId,
   onSelect,
   onRemove,
+  onMove,
 }: WorkingPaletteStripProps) {
   const listRef = useRef<HTMLUListElement | null>(null);
 
@@ -70,6 +72,9 @@ export function WorkingPaletteStrip({
         const light = rgb ? isLightColor(rgb) : true;
         const isActive = color.id === activeColorId;
 
+        const isFirst = index === 0;
+        const isLast = index === colors.length - 1;
+
         return (
           <li key={color.id}>
             <button
@@ -88,6 +93,36 @@ export function WorkingPaletteStrip({
                 {color.label ? <span className="swatch-label">{color.label}</span> : null}
               </span>
             </button>
+            {/* Reorder + remove stay hidden until the swatch is hovered or
+                focused, so the strip reads as colours first, controls second. */}
+            <div className="swatch-reorder">
+              <button
+                aria-disabled={isFirst}
+                aria-label={`Move ${color.hex} earlier`}
+                className="swatch-move"
+                onClick={() => {
+                  if (!isFirst) {
+                    onMove(color.id, -1);
+                  }
+                }}
+                type="button"
+              >
+                ‹
+              </button>
+              <button
+                aria-disabled={isLast}
+                aria-label={`Move ${color.hex} later`}
+                className="swatch-move"
+                onClick={() => {
+                  if (!isLast) {
+                    onMove(color.id, 1);
+                  }
+                }}
+                type="button"
+              >
+                ›
+              </button>
+            </div>
             <button
               aria-label={`Remove ${color.hex}`}
               className="swatch-remove"
