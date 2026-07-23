@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # PaintBridge generated test output
 temp/test-dist/
+
+# Subagent-driven-development scratch (task briefs, review packages, ledger)
+.superpowers/

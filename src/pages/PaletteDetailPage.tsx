@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
-import { MixComparison } from '../components/MixComparison';
+import { useMemo, useRef, useState } from 'react';
+import { MixEditor } from '../components/MixEditor';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { formatRgb, hexToRgb, isLightColor } from '../lib/color';
+import { hexToRgb, isLightColor } from '../lib/color';
 import { formatPaletteMeta } from '../lib/format';
 import { CONFIDENCE_LABEL } from '../lib/paintMatching';
 import { aggregatePaintUsage } from '../lib/paintUsage';
 import type { PaintUsage } from '../lib/paintUsage';
-import { buildPaletteSummary, mixSteps } from '../lib/paletteSummary';
+import { buildPaletteSummary } from '../lib/paletteSummary';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
@@ -16,8 +16,10 @@ type PaletteDetailPageProps = {
   palette: SavedPalette | null;
   ownedPaintIds: string[];
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onEdit: (palette: SavedPalette) => void;
+  onSetColorRecipe: (paletteId: string, colorId: string, recipe: MixRecipe | null) => void;
 };
 
 type PaletteItem = {
@@ -100,8 +102,10 @@ export function PaletteDetailPage({
   palette,
   ownedPaintIds,
   onDelete,
+  onDuplicate,
   onRename,
   onEdit,
+  onSetColorRecipe,
 }: PaletteDetailPageProps) {
   const [mixColorId, setMixColorId] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -113,16 +117,38 @@ export function PaletteDetailPage({
     [ownedPaintIds],
   );
 
-  const items = useMemo<PaletteItem[]>(
-    () =>
-      (palette?.colors ?? []).map((color) => {
-        const rgb = hexToRgb(color.hex);
-        const recipe =
-          rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
-        return { color, recipe };
-      }),
-    [palette, ownedPaints],
-  );
+  // suggestMixes is expensive (a full combinatorial search per color). The
+  // palette object gets a new identity on every recipe edit (parts steppers,
+  // alt-mix picks, reset in the MixEditor modal), which would otherwise
+  // recompute suggestions for every OTHER color on each click. Cache results
+  // keyed on (hex, owned-paint set): edits to one color's preferredRecipe
+  // don't change the cache key for the rest, so they hit the cache instead
+  // of re-searching. A bounded palette keeps the map small; entries made
+  // stale by an owned-paints change are simply never looked up again.
+  const suggestionCache = useRef(new Map<string, MixRecipe | null>());
+
+  const items = useMemo<PaletteItem[]>(() => {
+    const ownedKey = ownedPaintIds.join(',');
+
+    return (palette?.colors ?? []).map((color) => {
+      if (color.preferredRecipe) {
+        return { color, recipe: color.preferredRecipe };
+      }
+
+      const cacheKey = `${color.hex}|${ownedKey}`;
+      const cache = suggestionCache.current;
+
+      if (cache.has(cacheKey)) {
+        return { color, recipe: cache.get(cacheKey) ?? null };
+      }
+
+      const rgb = hexToRgb(color.hex);
+      const recipe =
+        rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
+      cache.set(cacheKey, recipe);
+      return { color, recipe };
+    });
+  }, [palette, ownedPaints, ownedPaintIds]);
 
   const usage = useMemo(
     () =>
@@ -224,6 +250,13 @@ export function PaletteDetailPage({
             </button>
             <button
               className="secondary-button"
+              onClick={() => onDuplicate(palette.id)}
+              type="button"
+            >
+              Duplicate
+            </button>
+            <button
+              className="secondary-button"
               onClick={() => exportPaletteAsJson(palette, items, usage)}
               type="button"
             >
@@ -260,15 +293,10 @@ export function PaletteDetailPage({
                   style={{ backgroundColor: color.hex }}
                   type="button"
                 >
-                  <span className="specs">
-                    {rgb ? (
-                      <span className="spec">
-                        <span className="k">RGB</span>
-                        <span className="v">{formatRgb(rgb)}</span>
-                      </span>
-                    ) : null}
+                  <span className="bname">
+                    {color.hex}
+                    {color.label ? <span className="bname-label">{color.label}</span> : null}
                   </span>
-                  <span className="bname">{color.hex}</span>
                 </button>
               </li>
             );
@@ -293,12 +321,14 @@ export function PaletteDetailPage({
                         style={{ backgroundColor: color.hex }}
                       />
                       <span className="mix-row-main">
-                        <span className="mix-row-hex">{color.hex}</span>
+                        <span className="mix-row-hex">
+                          {color.label ? `${color.label} · ${color.hex}` : color.hex}
+                        </span>
                         <span className="mix-row-recipe">
                           {recipe
                             ? recipe.ingredients
                                 .map((ingredient) => `${ingredient.parts} ${ingredient.paintName}`)
-                                .join(' · ')
+                                .join(' · ') + (color.preferredRecipe ? ' · your mix' : '')
                             : 'no workable mix'}
                         </span>
                       </span>
@@ -354,6 +384,9 @@ export function PaletteDetailPage({
                 />
                 <div>
                   <h2 className="target-name">{activeItem.color.hex}</h2>
+                  {activeItem.color.notes ? (
+                    <p className="quiet-note">{activeItem.color.notes}</p>
+                  ) : null}
                 </div>
               </div>
               <button
@@ -366,20 +399,21 @@ export function PaletteDetailPage({
               </button>
             </header>
 
-            {activeItem.recipe ? (
-              <>
-                <ol className="mix-steps">
-                  {mixSteps(activeItem.recipe).map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-                <MixComparison recipe={activeItem.recipe} />
-                <span className="micro mix-foot">Approximate starter mix · test a swatch first</span>
-              </>
+            {ownedPaints.length > 0 ? (
+              <MixEditor
+                footnote="Approximate starter mix · test a swatch first"
+                onPreferredChange={(recipe) =>
+                  onSetColorRecipe(palette.id, activeItem.color.id, recipe)
+                }
+                ownedPaints={ownedPaints}
+                preferred={activeItem.color.preferredRecipe ?? null}
+                showSteps
+                targetHex={activeItem.color.hex}
+              />
             ) : (
               <p className="empty-state">
-                No workable mix from your current paints. Mark more owned paints in the{' '}
-                <a href="#/workspace">workspace</a>.
+                Mark the paints you own in the <a href="#/workspace">workspace</a> to get a mix for
+                this color.
               </p>
             )}
           </div>

@@ -5,14 +5,19 @@ import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
 import type { ExtractedColor } from './lib/paletteExtraction';
+import { clonePalette, moveColorInList, normalizeLabel } from './lib/paletteEdits';
 import { createArtworkThumbnail } from './lib/thumbnails';
 import {
+  clampPaletteSize,
   createId,
   loadOwnedPaintIds,
+  loadPaletteSize,
   loadSavedPalettes,
   persistOwnedPaintIds,
+  persistPaletteSize,
   persistSavedPalettes,
 } from './lib/storage';
+import type { MixRecipe } from './types/paint';
 import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
 type Page = 'start' | 'workspace' | 'palettes';
@@ -68,6 +73,13 @@ export function App() {
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(loadSavedPalettes);
   const [ownedPaintIds, setOwnedPaintIds] = useState<string[]>(loadOwnedPaintIds);
   const [editingPaletteId, setEditingPaletteId] = useState<string | null>(null);
+  const [paletteSize, setPaletteSize] = useState<number>(loadPaletteSize);
+  // Debounce timer for auto-applying palette-size changes to the artwork.
+  const regenTimerRef = useRef<number | null>(null);
+  // Bumped whenever the project resets (new artwork, hex start, or opening a
+  // saved palette) so in-flight extractions/timers from an abandoned project
+  // can tell they're stale and avoid corrupting the new one.
+  const projectGenRef = useRef(0);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(routeFromHash());
@@ -79,11 +91,57 @@ export function App() {
   // (including base64 thumbnails) back to localStorage unchanged.
   const hasHydrated = useRef(false);
 
+  // Recipe edits (parts steppers, alt-mix picks) flow through setSavedPalettes
+  // on every click, and each write re-serializes every palette's color data
+  // plus every base64 artwork thumbnail. Debounce so a burst of clicks
+  // collapses into one write; a pending write is always flushed before the
+  // tab can go away (pagehide) or this component unmounts.
+  const savedPalettesRef = useRef(savedPalettes);
+  savedPalettesRef.current = savedPalettes;
+  const persistTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (hasHydrated.current) {
-      persistSavedPalettes(savedPalettes);
+    if (!hasHydrated.current) {
+      return;
     }
+
+    // Re-running because savedPalettes changed again inside the debounce
+    // window: cancel the stale timer (no flush here — that would defeat the
+    // debounce) and arm a fresh one for the latest value.
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
+    }
+
+    persistTimerRef.current = window.setTimeout(() => {
+      persistTimerRef.current = null;
+      persistSavedPalettes(savedPalettes);
+    }, 400);
+
+    return () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+      }
+    };
   }, [savedPalettes]);
+
+  // Mount-once: flush any pending debounced write immediately when the tab
+  // is closing (pagehide) or this component unmounts, so the last edits in a
+  // burst are never lost.
+  useEffect(() => {
+    const flushPendingWrite = () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+        persistSavedPalettes(savedPalettesRef.current);
+      }
+    };
+
+    window.addEventListener('pagehide', flushPendingWrite);
+    return () => {
+      window.removeEventListener('pagehide', flushPendingWrite);
+      flushPendingWrite();
+    };
+  }, []);
 
   useEffect(() => {
     if (hasHydrated.current) {
@@ -112,24 +170,90 @@ export function App() {
     setActiveColorId(color.id);
   };
 
-  /** Returns the number of colors added, or null when extraction failed. */
-  const autoGeneratePalette = async (dataUrl: string): Promise<number | null> => {
+  const changePaletteSize = (next: number) => {
+    // Keep the stored preference and the UI in lockstep, clamped to [3, 8].
+    const clamped = clampPaletteSize(next);
+    setPaletteSize(clamped);
+    persistPaletteSize(clamped);
+
+    // Auto-apply: re-extract at the new size. Debounced so rapid stepping
+    // re-extracts once at the size the user lands on, not on every tap.
+    if (!artwork) {
+      return;
+    }
+    const { dataUrl } = artwork;
+    if (regenTimerRef.current !== null) {
+      window.clearTimeout(regenTimerRef.current);
+    }
+    regenTimerRef.current = window.setTimeout(() => {
+      regenTimerRef.current = null;
+      void autoGeneratePalette(dataUrl, clamped);
+    }, 250);
+  };
+
+  /** Colors the replace-on-regen pass must never touch: manual/image picks,
+   * and auto colors the user has since invested in (named, noted, or given a
+   * mix). A plain auto-extracted swatch with none of those is still disposable. */
+  const isKeepableColor = (color: SampledColor) =>
+    color.source !== 'auto' ||
+    Boolean(color.label) ||
+    Boolean(color.notes) ||
+    Boolean(color.preferredRecipe);
+
+  /** Re-extracts the palette at the chosen size, replacing the disposable
+   * auto-extracted colors while keeping anything the user added by hand or
+   * invested in. Returns the number of fresh colors placed, 0 when extraction
+   * succeeded but every extracted hex was already kept (old disposable autos
+   * are still cleared out in this case), or null when extraction failed or
+   * the project moved on before this result could be applied. */
+  const autoGeneratePalette = async (
+    dataUrl: string,
+    size = paletteSize,
+  ): Promise<number | null> => {
+    const gen = projectGenRef.current;
     try {
-      const extracted = await extractPaletteFromDataUrl(dataUrl, 5);
-      const existing = new Set(workingColors.map((color) => color.hex));
+      const extracted = await extractPaletteFromDataUrl(dataUrl, size);
+
+      // The project changed (new artwork, hex start, or another palette
+      // opened) while extraction was in flight — this result belongs to an
+      // abandoned project. Bail before touching any state.
+      if (gen !== projectGenRef.current) {
+        return null;
+      }
+
+      // Keep colors the user added by hex or by clicking the artwork, and any
+      // auto color they've since invested in; only disposable autos are
+      // replaced by the fresh set.
+      const kept = workingColors.filter(isKeepableColor);
+      const keptHexes = new Set(kept.map((color) => color.hex));
       const fresh = extracted
-        .filter((color) => !existing.has(color.hex))
+        .filter((color) => !keptHexes.has(color.hex))
         .map(toSampledColor);
+
+      // Always run the replacement, even when nothing fresh survived the
+      // dedup (e.g. a solid-color logo whose one extracted hex is already
+      // kept) — otherwise stale disposable autos from a previous size/regen
+      // linger on screen while the caller reports "nothing found".
+      setWorkingColors((current) => {
+        // Recompute kept colors against the latest state so anything added while
+        // extraction was running survives.
+        const keptNow = current.filter(isKeepableColor);
+        const keptNowHexes = new Set(keptNow.map((color) => color.hex));
+        return [...fresh.filter((color) => !keptNowHexes.has(color.hex)), ...keptNow];
+      });
 
       if (fresh.length === 0) {
         return 0;
       }
 
-      setWorkingColors((current) => {
-        const currentHexes = new Set(current.map((color) => color.hex));
-        return [...current, ...fresh.filter((color) => !currentHexes.has(color.hex))];
-      });
-      setActiveColorId((activeId) => activeId ?? fresh[0].id);
+      // Move focus to the first fresh color unless a kept color is still selected.
+      setActiveColorId((activeId) =>
+        activeId && kept.some((color) => color.id === activeId) ? activeId : fresh[0].id,
+      );
+      // The gen-guard above already rules out the only known race (a second
+      // extraction landing after this one), so fresh.length is the true
+      // inserted count here — no need to recompute it from inside the
+      // updater above.
       return fresh.length;
     } catch {
       return null;
@@ -137,7 +261,15 @@ export function App() {
   };
 
   const selectArtwork = (dataUrl: string, name: string) => {
-    // New artwork starts a fresh working palette and a fresh project.
+    // New artwork starts a fresh working palette and a fresh project. Bump
+    // the generation and cancel any pending debounced re-extract so a
+    // previous project's timer/in-flight extraction can't land here.
+    projectGenRef.current += 1;
+    const gen = projectGenRef.current;
+    if (regenTimerRef.current !== null) {
+      window.clearTimeout(regenTimerRef.current);
+      regenTimerRef.current = null;
+    }
     setArtwork({ dataUrl, name });
     setWorkingColors([]);
     setActiveColorId(null);
@@ -145,7 +277,13 @@ export function App() {
 
     void (async () => {
       try {
-        const fresh = (await extractPaletteFromDataUrl(dataUrl, 5)).map(toSampledColor);
+        const fresh = (await extractPaletteFromDataUrl(dataUrl, paletteSize)).map(toSampledColor);
+
+        // A second selectArtwork (or startFromHex/editPalette) may have run
+        // while this extraction was in flight — discard the stale merge.
+        if (gen !== projectGenRef.current) {
+          return;
+        }
 
         // Merge rather than replace: keep colors the user added while
         // extraction was still running.
@@ -161,7 +299,13 @@ export function App() {
   };
 
   const startFromHex = (hex: string) => {
-    // Starting from a hex on the Start page begins a fresh project.
+    // Starting from a hex on the Start page begins a fresh project; bump the
+    // generation and cancel any pending debounced re-extract from before.
+    projectGenRef.current += 1;
+    if (regenTimerRef.current !== null) {
+      window.clearTimeout(regenTimerRef.current);
+      regenTimerRef.current = null;
+    }
     setArtwork(null);
     setWorkingColors([]);
     setEditingPaletteId(null);
@@ -171,13 +315,82 @@ export function App() {
 
   const updateColor = (id: string, hex: string, position?: SampledColor['position']) => {
     setWorkingColors((current) =>
-      current.map((color) => (color.id === id ? { ...color, hex, position } : color)),
+      current.map((color) => {
+        if (color.id !== id) {
+          return color;
+        }
+        if (color.hex === hex) {
+          // Position-only nudge (arrow key / sub-pixel drag): the sampled
+          // color didn't actually change, so keep its source and any stored
+          // mix — only the marker moved.
+          return { ...color, position };
+        }
+        // A genuine re-sample: the hex changed. Re-sampling is a sanctioned
+        // way to pick a color from the artwork (same as clicking it), so
+        // treat it as user-owned rather than a disposable auto-extracted
+        // color, and drop the now-invalid stored mix.
+        return { ...color, hex, position, source: 'image', preferredRecipe: undefined };
+      }),
     );
+  };
+
+  const setWorkingColorRecipe = (colorId: string, recipe: MixRecipe | null) => {
+    setWorkingColors((current) =>
+      current.map((color) =>
+        color.id === colorId ? { ...color, preferredRecipe: recipe ?? undefined } : color,
+      ),
+    );
+  };
+
+  const setWorkingColorLabel = (id: string, label: string) => {
+    const normalized = normalizeLabel(label);
+    setWorkingColors((current) =>
+      current.map((color) => (color.id === id ? { ...color, label: normalized } : color)),
+    );
+  };
+
+  const setWorkingColorNotes = (id: string, notes: string) => {
+    const normalized = normalizeLabel(notes);
+    setWorkingColors((current) =>
+      current.map((color) => (color.id === id ? { ...color, notes: normalized } : color)),
+    );
+  };
+
+  const setPaletteColorRecipe = (paletteId: string, colorId: string, recipe: MixRecipe | null) => {
+    setSavedPalettes((current) =>
+      current.map((palette) =>
+        palette.id === paletteId
+          ? {
+              ...palette,
+              colors: palette.colors.map((color) =>
+                color.id === colorId
+                  ? { ...color, preferredRecipe: recipe ?? undefined }
+                  : color,
+              ),
+            }
+          : palette,
+      ),
+    );
+
+    // editPalette snapshots the same color ids into workingColors, so if this
+    // palette's draft is open in the workspace, apply the edit there too —
+    // otherwise a later "Update palette" would silently revert it.
+    if (paletteId === editingPaletteId) {
+      setWorkingColors((current) =>
+        current.map((color) =>
+          color.id === colorId ? { ...color, preferredRecipe: recipe ?? undefined } : color,
+        ),
+      );
+    }
   };
 
   const removeColor = (id: string) => {
     setWorkingColors((current) => current.filter((color) => color.id !== id));
     setActiveColorId((current) => (current === id ? null : current));
+  };
+
+  const moveColor = (id: string, delta: number) => {
+    setWorkingColors((current) => moveColorInList(current, id, delta));
   };
 
   const savePalette = async (name: string) => {
@@ -236,6 +449,13 @@ export function App() {
   };
 
   const editPalette = (palette: SavedPalette) => {
+    // Opening a saved palette for editing starts a fresh project too; bump
+    // the generation and cancel any pending debounced re-extract from before.
+    projectGenRef.current += 1;
+    if (regenTimerRef.current !== null) {
+      window.clearTimeout(regenTimerRef.current);
+      regenTimerRef.current = null;
+    }
     setEditingPaletteId(palette.id);
     setArtwork(
       palette.artwork
@@ -249,6 +469,18 @@ export function App() {
 
   const deletePalette = (id: string) => {
     setSavedPalettes((current) => current.filter((palette) => palette.id !== id));
+  };
+
+  const duplicatePalette = (id: string) => {
+    const original = savedPalettes.find((palette) => palette.id === id);
+
+    if (!original) {
+      return;
+    }
+
+    const copy = clonePalette(original, createId, new Date().toISOString());
+    setSavedPalettes((current) => [copy, ...current]);
+    window.location.hash = `#/palettes/${encodeURIComponent(copy.id)}`;
   };
 
   return (
@@ -306,17 +538,26 @@ export function App() {
             onRemoveColor={removeColor}
             onSavePalette={savePalette}
             onSelectColor={setActiveColorId}
+            onSetColorRecipe={setWorkingColorRecipe}
+            onSetColorLabel={setWorkingColorLabel}
+            onSetColorNotes={setWorkingColorNotes}
+            onMoveColor={moveColor}
+            onPaletteSizeChange={changePaletteSize}
+            paletteSize={paletteSize}
           />
         ) : null}
         {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}
         {route.page === 'palette' ? (
           <PaletteDetailPage
+            key={route.paletteId}
             onDelete={(id) => {
               deletePalette(id);
               navigate('palettes');
             }}
+            onDuplicate={duplicatePalette}
             onEdit={editPalette}
             onRename={renamePalette}
+            onSetColorRecipe={setPaletteColorRecipe}
             ownedPaintIds={ownedPaintIds}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />

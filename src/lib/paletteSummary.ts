@@ -69,9 +69,8 @@ export function buildPaletteSummary(
   lines.push('Colors & starter mixes');
 
   items.forEach(({ color, recipe }, index) => {
-    lines.push(
-      recipe ? `${index + 1}. ${color.hex} — ${describeMix(recipe)}` : `${index + 1}. ${color.hex}`,
-    );
+    const name = color.label ? `${color.label} — ${color.hex}` : color.hex;
+    lines.push(recipe ? `${index + 1}. ${name} — ${describeMix(recipe)}` : `${index + 1}. ${name}`);
   });
 
   lines.push('');
