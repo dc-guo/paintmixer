@@ -8,7 +8,11 @@ export type SampledColor = {
   source: ColorSource;
   /** Optional user-given name for the color, e.g. "Sky". */
   label?: string;
-  /** Freeform private annotation; never rendered on swatches or in the copy summary. */
+  /**
+   * Freeform user annotation — a scratch place for reminders. Shown only on the
+   * palette detail page (not on swatches or in the copy summary), and included
+   * in the JSON export as part of the user's own palette data.
+   */
   notes?: string;
   /** Fractions (0–1) of image width/height; absent for manual colors. */
   position?: { x: number; y: number };
