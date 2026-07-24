@@ -1542,6 +1542,182 @@ h3 {
   line-height: 1.5;
 }
 
+/* ---------- mix sheet ---------- */
+
+.mixsheet {
+  max-width: 760px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 34px 38px;
+  background: var(--card);
+}
+
+.mixsheet-head {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.mixsheet-head .eyebrow {
+  margin-bottom: 8px;
+}
+
+.mixsheet-title {
+  font-size: 1.7rem;
+  font-weight: 400;
+}
+
+.mixsheet-hero {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.mixsheet-art {
+  width: 62%;
+  min-width: 0;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.mixsheet-strip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 220px;
+}
+
+.mixsheet-hero.no-art .mixsheet-strip {
+  min-height: 160px;
+}
+
+.mixsheet-band {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-radius: 7px;
+  padding: 0 12px;
+  font-style: italic;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.mixsheet-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mixsheet-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 122px;
+  border-radius: 10px;
+  padding: 12px 12px 13px;
+}
+
+.mixsheet-card p {
+  margin: 0;
+}
+
+.mixsheet-card .card-name {
+  font-size: 0.98rem;
+}
+
+.mixsheet-card .card-hex {
+  font-style: italic;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.mixsheet-card .card-notes {
+  margin-top: 5px;
+  font-style: italic;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.mixsheet-card .card-mix {
+  margin-top: auto;
+  padding-top: 8px;
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+.mixsheet-card.on-dark {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.mixsheet-card.on-light {
+  color: rgba(47, 50, 53, 0.88);
+}
+
+.mixsheet-strip .on-dark {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.mixsheet-strip .on-light {
+  color: rgba(47, 50, 53, 0.85);
+}
+
+.mixsheet-foot {
+  margin: 20px 0 0;
+  text-align: center;
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+}
+
+.mixsheet-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 760px;
+  margin: 0 auto 18px;
+}
+
+.mixsheet-toolbar .actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Save as PDF = the browser's print dialog. Print only the poster. */
+@media print {
+  .top-nav,
+  .mixsheet-toolbar,
+  .back-link {
+    display: none !important;
+  }
+
+  .app-shell {
+    padding: 0;
+  }
+
+  .mixsheet {
+    border: none;
+    max-width: none;
+    padding: 0;
+    /* Swatch colors must survive the printer's ink-saving defaults. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .mixsheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 860px) {
