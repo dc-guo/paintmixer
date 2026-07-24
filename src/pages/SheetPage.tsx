@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { MixSheet } from '../components/MixSheet';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { hexToRgb } from '../lib/color';
+import { copyTextToClipboard } from '../lib/clipboard';
 import { buildSheetModel } from '../lib/mixSheetModel';
+import { encodeSheet, MAX_SHARE_URL_LENGTH } from '../lib/mixSheetCodec';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { SavedPalette } from '../types/palette';
 
@@ -17,6 +19,8 @@ type SheetPageProps = {
  * then hands a self-contained model to the poster.
  */
 export function SheetPage({ palette, ownedPaintIds }: SheetPageProps) {
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed' | 'toolong'>('idle');
+
   const ownedPaints = useMemo(
     () => liquitexBasics.filter((paint) => ownedPaintIds.includes(paint.id)),
     [ownedPaintIds],
@@ -59,6 +63,35 @@ export function SheetPage({ palette, ownedPaintIds }: SheetPageProps) {
           ← {palette.name}
         </a>
         <div className="actions">
+          {copyState !== 'idle' ? (
+            <span className="save-confirm" role="status">
+              {copyState === 'copied'
+                ? '✓ Link copied'
+                : copyState === 'toolong'
+                  ? 'Too long to link — share the PDF instead'
+                  : 'Copy failed'}
+            </span>
+          ) : null}
+          <button
+            className="secondary-button"
+            onClick={() => {
+              void (async () => {
+                const url = `${window.location.origin}${window.location.pathname}#/shared/${encodeSheet(model)}`;
+
+                if (url.length > MAX_SHARE_URL_LENGTH) {
+                  setCopyState('toolong');
+                } else {
+                  const copied = await copyTextToClipboard(url);
+                  setCopyState(copied ? 'copied' : 'failed');
+                }
+
+                window.setTimeout(() => setCopyState('idle'), 3000);
+              })();
+            }}
+            type="button"
+          >
+            Copy link
+          </button>
           <button className="secondary-button" onClick={() => window.print()} type="button">
             Save as PDF
           </button>

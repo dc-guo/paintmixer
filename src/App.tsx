@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PaletteDetailPage } from './pages/PaletteDetailPage';
 import { PalettesPage } from './pages/PalettesPage';
+import { SharedSheetPage } from './pages/SharedSheetPage';
 import { SheetPage } from './pages/SheetPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
@@ -66,6 +67,12 @@ function routeFromHash(): Route {
       // Malformed percent-encoding in a shared link; fall back to the gallery.
       return { page: 'palettes' };
     }
+  }
+
+  const shared = /^shared\/(.+)$/.exec(hash);
+
+  if (shared) {
+    return { page: 'shared', encoded: shared[1] };
   }
 
   return { page: 'start' };
@@ -584,6 +591,7 @@ export function App() {
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />
         ) : null}
+        {route.page === 'shared' ? <SharedSheetPage encoded={route.encoded} /> : null}
       </main>
     </div>
   );

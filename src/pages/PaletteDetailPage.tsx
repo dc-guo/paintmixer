@@ -3,6 +3,7 @@ import { MixEditor } from '../components/MixEditor';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { hexToRgb, isLightColor } from '../lib/color';
+import { copyTextToClipboard } from '../lib/clipboard';
 import { formatPaletteMeta } from '../lib/format';
 import { CONFIDENCE_LABEL } from '../lib/paintMatching';
 import { aggregatePaintUsage } from '../lib/paintUsage';
@@ -26,30 +27,6 @@ type PaletteItem = {
   color: SampledColor;
   recipe: MixRecipe | null;
 };
-
-async function copyTextToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Clipboard API can be unavailable (permissions, insecure context);
-    // fall back to the legacy selection approach.
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      const copied = document.execCommand('copy');
-      textarea.remove();
-      return copied;
-    } catch {
-      return false;
-    }
-  }
-}
 
 function exportPaletteAsJson(palette: SavedPalette, items: PaletteItem[], usage: PaintUsage[]) {
   const payload = {
