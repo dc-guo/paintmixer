@@ -1716,6 +1716,12 @@ h3 {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  /* A color card or the hero should never split across a page boundary. */
+  .mixsheet-card,
+  .mixsheet-hero {
+    break-inside: avoid;
+  }
 }
 
 /* ---------- responsive ---------- */
