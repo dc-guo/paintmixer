@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { hexToRgb, rgbToHex } from '../lib/color';
 import { averagePatch, correctForPaper, nudgeLine, swatchVerdict } from '../lib/swatchCheck';
@@ -65,6 +65,14 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
     };
     image.src = url;
   };
+
+  useEffect(() => {
+    if (imageUrl) {
+      drawImage(imageUrl);
+    }
+    // drawImage reads canvasRef.current, which is attached before effects run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl]);
 
   const sampleAt = (point: Point): RGB | null => {
     const canvas = canvasRef.current;
@@ -141,12 +149,7 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
               <canvas
                 className="swatch-canvas"
                 onClick={handleCanvasClick}
-                ref={(node) => {
-                  canvasRef.current = node;
-                  if (node && imageUrl) {
-                    drawImage(imageUrl);
-                  }
-                }}
+                ref={canvasRef}
               />
             </div>
 
