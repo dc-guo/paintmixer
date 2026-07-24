@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PaletteDetailPage } from './pages/PaletteDetailPage';
 import { PalettesPage } from './pages/PalettesPage';
+import { SheetPage } from './pages/SheetPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
@@ -22,7 +23,11 @@ import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
 type Page = 'start' | 'workspace' | 'palettes';
 
-type Route = { page: Page } | { page: 'palette'; paletteId: string };
+type Route =
+  | { page: Page }
+  | { page: 'palette'; paletteId: string }
+  | { page: 'sheet'; paletteId: string }
+  | { page: 'shared'; encoded: string };
 
 type Artwork = {
   dataUrl: string;
@@ -40,6 +45,16 @@ function routeFromHash(): Route {
 
   if (hash === 'workspace' || hash === 'palettes') {
     return { page: hash };
+  }
+
+  const sheet = /^palettes\/(.+)\/sheet$/.exec(hash);
+
+  if (sheet) {
+    try {
+      return { page: 'sheet', paletteId: decodeURIComponent(sheet[1]) };
+    } catch {
+      return { page: 'palettes' };
+    }
   }
 
   const detail = /^palettes\/(.+)$/.exec(hash);
@@ -493,7 +508,8 @@ export function App() {
           {NAV_ITEMS.map((item) => (
             <a
               aria-current={
-                route.page === item.page || (item.page === 'palettes' && route.page === 'palette')
+                route.page === item.page ||
+                (item.page === 'palettes' && (route.page === 'palette' || route.page === 'sheet'))
                   ? 'page'
                   : undefined
               }
@@ -558,6 +574,12 @@ export function App() {
             onEdit={editPalette}
             onRename={renamePalette}
             onSetColorRecipe={setPaletteColorRecipe}
+            ownedPaintIds={ownedPaintIds}
+            palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
+          />
+        ) : null}
+        {route.page === 'sheet' ? (
+          <SheetPage
             ownedPaintIds={ownedPaintIds}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />

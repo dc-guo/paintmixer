@@ -245,6 +245,15 @@ export function PaletteDetailPage({
             >
               Copy summary
             </button>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                window.location.hash = `#/palettes/${encodeURIComponent(palette.id)}/sheet`;
+              }}
+              type="button"
+            >
+              Mix sheet
+            </button>
             <button className="secondary-button" onClick={() => onEdit(palette)} type="button">
               Edit in workspace
             </button>
