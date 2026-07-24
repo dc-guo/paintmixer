@@ -92,3 +92,80 @@ export function correctForPaper(swatch: RGB, paper: RGB): PaperResult {
     },
   };
 }
+
+import { CONFIDENCE_LABEL, confidenceForDistance } from './paintMatching.js';
+import { colorDistance, labDistance, rgbToLab } from './deltaE.js';
+import type { MixRecipe } from '../types/paint';
+
+export type Verdict = 'close' | 'fair' | 'far';
+
+/** Corrected swatch vs target in the same words the paint matcher uses. */
+export function swatchVerdict(corrected: RGB, target: RGB): Verdict {
+  return CONFIDENCE_LABEL[confidenceForDistance(colorDistance(corrected, target))];
+}
+
+const L_NUDGE = 3;
+const C_NUDGE = 3;
+
+// CIELAB a/b axes: +a red, +b yellow, −a green, −b blue. Six plain hue words at
+// their a/b-plane angles; the nudge names whichever is nearest the gap direction.
+const HUE_WORDS: Array<{ word: string; angle: number }> = [
+  { word: 'red', angle: 0 },
+  { word: 'orange', angle: 45 },
+  { word: 'yellow', angle: 90 },
+  { word: 'green', angle: 180 },
+  { word: 'blue', angle: 270 },
+  { word: 'purple', angle: 315 },
+];
+
+function nearestHueWord(da: number, db: number): string {
+  const angle = ((Math.atan2(db, da) * 180) / Math.PI + 360) % 360;
+  let best = HUE_WORDS[0];
+  let bestDist = 360;
+  for (const candidate of HUE_WORDS) {
+    const raw = Math.abs(angle - candidate.angle);
+    const dist = Math.min(raw, 360 - raw);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = candidate;
+    }
+  }
+  return best.word;
+}
+
+/**
+ * One plain-language suggestion for moving the mix toward the target, or null
+ * when there is no recipe to nudge. Lightness gap wins first; then hue
+ * direction; otherwise an "already close" encouragement.
+ */
+export function nudgeLine(corrected: RGB, target: RGB, recipe: MixRecipe | null): string | null {
+  if (!recipe) {
+    return null;
+  }
+
+  const swatchLab = rgbToLab(corrected);
+  const targetLab = rgbToLab(target);
+  const dLight = swatchLab.l - targetLab.l; // > 0 → swatch is lighter
+  const da = targetLab.a - swatchLab.a; // direction FROM swatch TO target
+  const db = targetLab.b - swatchLab.b;
+  const chromaGap = labDistance({ l: swatchLab.l, a: swatchLab.a, b: swatchLab.b }, { l: swatchLab.l, a: targetLab.a, b: targetLab.b });
+
+  const hasWhite = recipe.ingredients.some((ingredient) => /white/i.test(ingredient.paintName));
+
+  if (Math.abs(dLight) >= L_NUDGE && Math.abs(dLight) >= chromaGap) {
+    if (dLight > 0) {
+      return hasWhite
+        ? 'Your swatch is lighter than the target — ease off the white.'
+        : 'Your swatch is lighter than the target — add a touch of the darkest paint.';
+    }
+    return hasWhite
+      ? 'Your swatch is darker than the target — add a little white.'
+      : 'Your swatch is darker than the target — ease off the darkest paint.';
+  }
+
+  if (chromaGap >= C_NUDGE) {
+    return `A touch more ${nearestHueWord(da, db)} would help.`;
+  }
+
+  return 'Right in the neighborhood — paint a larger swatch and check in daylight.';
+}

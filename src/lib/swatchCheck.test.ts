@@ -75,3 +75,53 @@ test('correctForPaper rejects paper that is too saturated (a colored wall)', () 
   const result = correctForPaper({ r: 100, g: 100, b: 100 }, { r: 220, g: 120, b: 90 });
   assert.deepEqual(result, { ok: false, reason: 'too-saturated' });
 });
+
+import { nudgeLine, swatchVerdict } from './swatchCheck.js';
+import type { MixRecipe } from '../types/paint';
+
+function recipeWith(names: string[]): MixRecipe {
+  return {
+    targetHex: '#000000',
+    ingredients: names.map((paintName, i) => ({ paintId: `p${i}`, paintName, parts: 1 })),
+    estimatedHex: '#000000',
+    deltaE: 0,
+    confidence: 'high',
+    notes: [],
+  };
+}
+
+test('swatchVerdict maps corrected-vs-target distance to close/fair/far', () => {
+  assert.equal(swatchVerdict({ r: 100, g: 120, b: 140 }, { r: 100, g: 120, b: 140 }), 'close');
+  // A large, obvious difference is far.
+  assert.equal(swatchVerdict({ r: 20, g: 20, b: 20 }, { r: 240, g: 240, b: 240 }), 'far');
+});
+
+test('nudgeLine returns null when there is no recipe', () => {
+  assert.equal(nudgeLine({ r: 200, g: 200, b: 200 }, { r: 100, g: 100, b: 100 }, null), null);
+});
+
+test('nudgeLine: swatch lighter than target, recipe has white → ease off the white', () => {
+  const line = nudgeLine({ r: 210, g: 210, b: 210 }, { r: 120, g: 120, b: 120 }, recipeWith(['Titanium White', 'Mars Black']));
+  assert.equal(line, 'Your swatch is lighter than the target — ease off the white.');
+});
+
+test('nudgeLine: swatch lighter, recipe has no white → add the darkest paint', () => {
+  const line = nudgeLine({ r: 210, g: 210, b: 210 }, { r: 120, g: 120, b: 120 }, recipeWith(['Primary Blue', 'Primary Yellow']));
+  assert.equal(line, 'Your swatch is lighter than the target — add a touch of the darkest paint.');
+});
+
+test('nudgeLine: swatch darker than target, recipe has white → add a little white', () => {
+  const line = nudgeLine({ r: 120, g: 120, b: 120 }, { r: 210, g: 210, b: 210 }, recipeWith(['Titanium White', 'Mars Black']));
+  assert.equal(line, 'Your swatch is darker than the target — add a little white.');
+});
+
+test('nudgeLine: hue gap dominant → plain-words direction toward the target', () => {
+  // Same lightness, but the target is bluer than the swatch.
+  const line = nudgeLine({ r: 150, g: 150, b: 120 }, { r: 150, g: 150, b: 210 }, recipeWith(['Titanium White']));
+  assert.equal(line, 'A touch more blue would help.');
+});
+
+test('nudgeLine: already close → encouragement, no change', () => {
+  const line = nudgeLine({ r: 150, g: 150, b: 150 }, { r: 150, g: 150, b: 150 }, recipeWith(['Titanium White']));
+  assert.equal(line, 'Right in the neighborhood — paint a larger swatch and check in daylight.');
+});
