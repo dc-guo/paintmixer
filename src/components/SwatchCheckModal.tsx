@@ -9,6 +9,7 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 
 type Phase = 'swatch' | 'paper' | 'result';
 type Point = { x: number; y: number };
+type Marker = 'swatch' | 'paper';
 
 type SwatchCheckModalProps = {
   targetHex: string;
@@ -17,16 +18,23 @@ type SwatchCheckModalProps = {
 };
 
 const PROMPT: Record<Phase, string> = {
-  swatch: 'Tap your painted swatch.',
-  paper: 'Tap a clean bit of the paper.',
+  swatch: 'Tap the painted color.',
+  paper: 'Tap the white paper.',
   result: '',
 };
+
+const NUDGE_KEY = 3;
+
+function clamp(value: number, max: number) {
+  return Math.min(max, Math.max(0, value));
+}
 
 export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModalProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('swatch');
   const [swatchPoint, setSwatchPoint] = useState<Point | null>(null);
   const [paperPoint, setPaperPoint] = useState<Point | null>(null);
+  const [dragging, setDragging] = useState<Marker | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEscapeKey(true, onClose);
@@ -74,6 +82,40 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
+  const pointFromClient = (clientX: number, clientY: number): Point | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return null;
+    }
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: clamp(((clientX - rect.left) / rect.width) * canvas.width, canvas.width),
+      y: clamp(((clientY - rect.top) / rect.height) * canvas.height, canvas.height),
+    };
+  };
+
+  // Drag a placed marker to re-sample; the verdict recomputes live because the
+  // result below is derived from these points on every render.
+  useEffect(() => {
+    if (!dragging) {
+      return;
+    }
+    const setter = dragging === 'swatch' ? setSwatchPoint : setPaperPoint;
+    const onMove = (event: PointerEvent) => {
+      const point = pointFromClient(event.clientX, event.clientY);
+      if (point) {
+        setter(point);
+      }
+    };
+    const onUp = () => setDragging(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [dragging]);
+
   const sampleAt = (point: Point): RGB | null => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -85,15 +127,13 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas || phase === 'result') {
+    if (phase === 'result') {
       return;
     }
-    const rect = canvas.getBoundingClientRect();
-    const point = {
-      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
-    };
+    const point = pointFromClient(event.clientX, event.clientY);
+    if (!point) {
+      return;
+    }
     if (phase === 'swatch') {
       setSwatchPoint(point);
       setPhase('paper');
@@ -102,6 +142,56 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
       setPhase('result');
     }
   };
+
+  const nudgeMarker = (marker: Marker, dx: number, dy: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    const setter = marker === 'swatch' ? setSwatchPoint : setPaperPoint;
+    setter((prev) =>
+      prev ? { x: clamp(prev.x + dx, canvas.width), y: clamp(prev.y + dy, canvas.height) } : prev,
+    );
+  };
+
+  const handleMarkerKeyDown = (marker: Marker) => (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const deltas: Record<string, [number, number]> = {
+      ArrowLeft: [-NUDGE_KEY, 0],
+      ArrowRight: [NUDGE_KEY, 0],
+      ArrowUp: [0, -NUDGE_KEY],
+      ArrowDown: [0, NUDGE_KEY],
+    };
+    const delta = deltas[event.key];
+    if (!delta) {
+      return;
+    }
+    event.preventDefault();
+    nudgeMarker(marker, delta[0], delta[1]);
+  };
+
+  const markerStyle = (point: Point) => {
+    const canvas = canvasRef.current;
+    const width = canvas?.width ?? 1;
+    const height = canvas?.height ?? 1;
+    return { left: `${(point.x / width) * 100}%`, top: `${(point.y / height) * 100}%` };
+  };
+
+  const renderMarker = (marker: Marker, point: Point, label: string) => (
+    <button
+      aria-label={`${label} sample point — drag or use the arrow keys to move it`}
+      className={`swatch-marker ${marker}`}
+      onKeyDown={handleMarkerKeyDown(marker)}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setDragging(marker);
+      }}
+      style={markerStyle(point)}
+      type="button"
+    >
+      <span className="swatch-marker-label">{label}</span>
+    </button>
+  );
 
   // Result is derived on render from the two sample points.
   let paper: PaperResult | null = null;
@@ -146,11 +236,11 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
           <>
             {phase !== 'result' ? <p className="swatch-prompt">{PROMPT[phase]}</p> : null}
             <div className="swatch-canvas-wrap">
-              <canvas
-                className="swatch-canvas"
-                onClick={handleCanvasClick}
-                ref={canvasRef}
-              />
+              <div className="swatch-canvas-frame">
+                <canvas className="swatch-canvas" onClick={handleCanvasClick} ref={canvasRef} />
+                {swatchPoint ? renderMarker('swatch', swatchPoint, 'color') : null}
+                {paperPoint ? renderMarker('paper', paperPoint, 'white') : null}
+              </div>
             </div>
 
             {phase === 'result' ? (
@@ -159,7 +249,7 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
                   <p className="empty-state">Select a color first.</p>
                 ) : paper && !paper.ok ? (
                   <p className="quiet-note">
-                    That doesn't look like white paper — <button className="text-link" onClick={() => setPhase('paper')} type="button">tap a cleaner spot</button>.
+                    That doesn't look like white paper — drag the white dot onto a clean area.
                   </p>
                 ) : verdict && correctedHex ? (
                   <>
@@ -177,10 +267,22 @@ export function SwatchCheckModal({ targetHex, recipe, onClose }: SwatchCheckModa
                   </>
                 ) : null}
 
+                <p className="swatch-hint">Drag a dot to re-sample.</p>
                 <div className="swatch-adjust">
-                  <button className="text-link" onClick={() => setPhase('swatch')} type="button">Adjust swatch</button>
-                  <button className="text-link" onClick={() => setPhase('paper')} type="button">Adjust paper</button>
-                  <button className="text-link" onClick={() => setImageUrl(null)} type="button">Check another</button>
+                  <button
+                    className="text-link"
+                    onClick={() => {
+                      setPhase('swatch');
+                      setSwatchPoint(null);
+                      setPaperPoint(null);
+                    }}
+                    type="button"
+                  >
+                    Start over
+                  </button>
+                  <button className="text-link" onClick={() => setImageUrl(null)} type="button">
+                    Check another
+                  </button>
                 </div>
               </div>
             ) : null}

@@ -1770,6 +1770,13 @@ h3 {
   justify-content: center;
 }
 
+/* Sized to the canvas so the absolutely-positioned markers align to it. */
+.swatch-canvas-frame {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
 .swatch-canvas {
   max-width: 100%;
   border: 1px solid var(--line);
@@ -1777,8 +1784,56 @@ h3 {
   cursor: crosshair;
 }
 
+/* Drag-to-resample dots, styled to read on any photo (white ring + dark halo).
+   The caption doubles as the instruction — "color" on the swatch, "white" on
+   the paper. */
+.swatch-marker {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55);
+  cursor: grab;
+  touch-action: none;
+}
+
+.swatch-marker.paper {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.swatch-marker:active {
+  cursor: grabbing;
+}
+
+.swatch-marker-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 4px);
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .swatch-result {
   margin-top: 16px;
+}
+
+.swatch-hint {
+  margin: 14px 0 0;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-size: 0.8rem;
 }
 
 .swatch-verdict {
