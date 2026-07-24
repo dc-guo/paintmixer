@@ -30,7 +30,7 @@ jobs:
       - run: npm test
       - run: npx tsc -b
       # Project pages serve from /<repo>/, so the asset base must match.
-      - run: npx vite build --base=/paintmixer/
+      - run: npx vite build --base=/paintbridge/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

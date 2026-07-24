@@ -2,7 +2,7 @@
 
 Turn digital colors into acrylic paint you can actually mix.
 
-**Live site:** https://dc-guo.github.io/paintmixer/
+**Live site:** https://dc-guo.github.io/paintbridge/
 
 Upload artwork, pull out its dominant colors with draggable sample markers, match each color to the closest Liquitex BASICS acrylics, and get starter mix recipes ("2 parts Titanium White + 1 part Payne's Gray") from the paints you own — plus a paint-usage chart and copyable mixing summary per saved palette.
 
