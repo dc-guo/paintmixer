@@ -5,6 +5,7 @@ import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
 import { MixComparison } from '../components/MixComparison';
 import { MixEditor } from '../components/MixEditor';
+import { SwatchCheckModal } from '../components/SwatchCheckModal';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
@@ -88,6 +89,7 @@ export function WorkspacePage({
   const [paintQuery, setPaintQuery] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
+  const [isSwatchCheckOpen, setIsSwatchCheckOpen] = useState(false);
   // Roving-focus targets for the compact reorder arrows (finding n=9): after a
   // move, focus must land on a usable control, never on a disabled one or body.
   const moveLeftRef = useRef<HTMLButtonElement | null>(null);
@@ -130,6 +132,19 @@ export function WorkspacePage({
     const rgb = deferredPreviewHex ? hexToRgb(deferredPreviewHex) : null;
     return rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
   }, [deferredPreviewHex, ownedPaints]);
+
+  // Mirrors the resolution MixEditor uses: preferred recipe wins, else fall
+  // back to one live suggestion from owned paints.
+  const activeRecipe = useMemo(() => {
+    if (!activeColor) {
+      return null;
+    }
+    if (activeColor.preferredRecipe) {
+      return activeColor.preferredRecipe;
+    }
+    const rgb = hexToRgb(activeColor.hex);
+    return rgb && ownedPaints.length > 0 ? suggestMixes(rgb, ownedPaints, 1)[0] ?? null : null;
+  }, [activeColor, ownedPaints]);
 
   const inspectedLabel = preview
     ? 'previewing — not in palette'
@@ -559,13 +574,22 @@ export function WorkspacePage({
                 </>
               )
             ) : activeColor ? (
-              <MixEditor
-                footnote="Approximate · test a swatch first"
-                onPreferredChange={(recipe) => onSetColorRecipe(activeColor.id, recipe)}
-                ownedPaints={ownedPaints}
-                preferred={activeColor.preferredRecipe ?? null}
-                targetHex={activeColor.hex}
-              />
+              <>
+                <MixEditor
+                  footnote="Approximate · test a swatch first"
+                  onPreferredChange={(recipe) => onSetColorRecipe(activeColor.id, recipe)}
+                  ownedPaints={ownedPaints}
+                  preferred={activeColor.preferredRecipe ?? null}
+                  targetHex={activeColor.hex}
+                />
+                <button
+                  className="secondary-button"
+                  onClick={() => setIsSwatchCheckOpen(true)}
+                  type="button"
+                >
+                  Check a painted swatch
+                </button>
+              </>
             ) : null}
           </article>
 
@@ -626,6 +650,14 @@ export function WorkspacePage({
             )}
           </aside>
         </div>
+      ) : null}
+
+      {isSwatchCheckOpen && activeColor ? (
+        <SwatchCheckModal
+          onClose={() => setIsSwatchCheckOpen(false)}
+          recipe={activeRecipe}
+          targetHex={activeColor.hex}
+        />
       ) : null}
     </div>
   );

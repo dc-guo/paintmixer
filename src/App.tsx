@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { PaletteDetailPage } from './pages/PaletteDetailPage';
 import { PalettesPage } from './pages/PalettesPage';
+import { SharedSheetPage } from './pages/SharedSheetPage';
+import { SheetPage } from './pages/SheetPage';
 import { StartPage } from './pages/StartPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { extractPaletteFromDataUrl } from './lib/paletteExtraction';
@@ -22,7 +24,11 @@ import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
 type Page = 'start' | 'workspace' | 'palettes';
 
-type Route = { page: Page } | { page: 'palette'; paletteId: string };
+type Route =
+  | { page: Page }
+  | { page: 'palette'; paletteId: string }
+  | { page: 'sheet'; paletteId: string }
+  | { page: 'shared'; encoded: string };
 
 type Artwork = {
   dataUrl: string;
@@ -42,6 +48,16 @@ function routeFromHash(): Route {
     return { page: hash };
   }
 
+  const sheet = /^palettes\/(.+)\/sheet$/.exec(hash);
+
+  if (sheet) {
+    try {
+      return { page: 'sheet', paletteId: decodeURIComponent(sheet[1]) };
+    } catch {
+      return { page: 'palettes' };
+    }
+  }
+
   const detail = /^palettes\/(.+)$/.exec(hash);
 
   if (detail) {
@@ -51,6 +67,12 @@ function routeFromHash(): Route {
       // Malformed percent-encoding in a shared link; fall back to the gallery.
       return { page: 'palettes' };
     }
+  }
+
+  const shared = /^shared\/(.+)$/.exec(hash);
+
+  if (shared) {
+    return { page: 'shared', encoded: shared[1] };
   }
 
   return { page: 'start' };
@@ -493,7 +515,8 @@ export function App() {
           {NAV_ITEMS.map((item) => (
             <a
               aria-current={
-                route.page === item.page || (item.page === 'palettes' && route.page === 'palette')
+                route.page === item.page ||
+                (item.page === 'palettes' && (route.page === 'palette' || route.page === 'sheet'))
                   ? 'page'
                   : undefined
               }
@@ -562,6 +585,13 @@ export function App() {
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />
         ) : null}
+        {route.page === 'sheet' ? (
+          <SheetPage
+            ownedPaintIds={ownedPaintIds}
+            palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
+          />
+        ) : null}
+        {route.page === 'shared' ? <SharedSheetPage encoded={route.encoded} /> : null}
       </main>
     </div>
   );
