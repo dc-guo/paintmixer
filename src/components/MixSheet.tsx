@@ -20,13 +20,13 @@ export function MixSheet({ model }: { model: MixSheetModel }) {
           <img alt="" className="mixsheet-art" src={model.artworkDataUrl} />
         ) : null}
         <div aria-hidden className="mixsheet-strip">
-          {model.colors.map((color) => {
+          {model.colors.map((color, index) => {
             const rgb = hexToRgb(color.hex);
             const light = rgb ? isLightColor(rgb) : true;
             return (
               <div
                 className="mixsheet-band"
-                key={color.hex + (color.label ?? '')}
+                key={index}
                 style={{ backgroundColor: color.hex }}
               >
                 <span className={light ? 'on-light' : 'on-dark'}>{color.hex}</span>
@@ -37,14 +37,14 @@ export function MixSheet({ model }: { model: MixSheetModel }) {
       </div>
 
       <ul className="mixsheet-cards">
-        {model.colors.map((color) => {
+        {model.colors.map((color, index) => {
           const rgb = hexToRgb(color.hex);
           const light = rgb ? isLightColor(rgb) : true;
           const line = formatMixLine(color.mix);
           return (
             <li
               className={light ? 'mixsheet-card on-light' : 'mixsheet-card on-dark'}
-              key={color.hex + (color.label ?? '')}
+              key={index}
               style={{ backgroundColor: color.hex }}
             >
               <p className="card-name">{color.label ?? color.hex}</p>
