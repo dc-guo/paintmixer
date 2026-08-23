@@ -1,13 +1,15 @@
 import { hexToRgb, isLightColor } from '../lib/color';
-import { formatMixLine } from '../lib/mixSheetModel';
+import { aggregateMixUsage, formatMixLine } from '../lib/mixSheetModel';
 import type { MixSheetModel } from '../lib/mixSheetModel';
 
 /**
- * The poster: title, artwork (or color strip) + vertical hex strip, one card
- * per color with name/hex/mix, approximation footer. Pure render — both the
- * owner's sheet view and the shared read-only view feed it a model.
+ * The poster: title, artwork (or a color bar) beside the paint-ratio list, one
+ * card per color with name/hex/mix, approximation footer. Pure render — both
+ * the owner's sheet view and the shared read-only view feed it a model.
  */
 export function MixSheet({ model }: { model: MixSheetModel }) {
+  const usage = aggregateMixUsage(model.colors);
+
   return (
     <article aria-label={`Mix sheet for ${model.name}`} className="mixsheet">
       <header className="mixsheet-head">
@@ -18,21 +20,27 @@ export function MixSheet({ model }: { model: MixSheetModel }) {
       <div className={model.artworkDataUrl ? 'mixsheet-hero' : 'mixsheet-hero no-art'}>
         {model.artworkDataUrl ? (
           <img alt="" className="mixsheet-art" src={model.artworkDataUrl} />
-        ) : null}
-        <div aria-hidden className="mixsheet-strip">
-          {model.colors.map((color, index) => {
-            const rgb = hexToRgb(color.hex);
-            const light = rgb ? isLightColor(rgb) : true;
-            return (
-              <div
-                className="mixsheet-band"
-                key={index}
-                style={{ backgroundColor: color.hex }}
-              >
-                <span className={light ? 'on-light' : 'on-dark'}>{color.hex}</span>
-              </div>
-            );
-          })}
+        ) : (
+          <div aria-hidden className="mixsheet-colorbar">
+            {model.colors.map((color, index) => (
+              <div className="mixsheet-colorband" key={index} style={{ backgroundColor: color.hex }} />
+            ))}
+          </div>
+        )}
+        <div className="mixsheet-ratios">
+          <p className="eyebrow">Paints to have on hand</p>
+          {usage.length > 0 ? (
+            <ul className="ratio-list">
+              {usage.map((share, index) => (
+                <li className="ratio-row" key={index}>
+                  <span className="ratio-name">{share.paintName}</span>
+                  <span className="ratio-pct">{share.percentage}%</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="ratio-empty">Mark the paints you own to see mix ratios.</p>
+          )}
         </div>
       </div>
 

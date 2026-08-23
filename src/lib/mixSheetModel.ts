@@ -46,3 +46,41 @@ export function buildSheetModel(
 export function formatMixLine(mix: MixLine[]): string {
   return mix.map((line) => `${line.parts} ${line.paintName}`).join(' · ');
 }
+
+export type PaintShare = { paintName: string; percentage: number };
+
+/**
+ * How much of each paint the whole palette needs, as relative percentages.
+ * Each color is normalized first so every color contributes equally regardless
+ * of its own parts total (mirrors aggregatePaintUsage, but keyed on paint name
+ * so it works from a decoded share payload with no paint library). A planning
+ * estimate, not a physical volume.
+ */
+export function aggregateMixUsage(colors: SheetColor[]): PaintShare[] {
+  const shares = new Map<string, number>();
+
+  for (const color of colors) {
+    const total = color.mix.reduce((sum, line) => sum + line.parts, 0);
+
+    if (total === 0) {
+      continue;
+    }
+
+    for (const line of color.mix) {
+      shares.set(line.paintName, (shares.get(line.paintName) ?? 0) + line.parts / total);
+    }
+  }
+
+  const grandTotal = [...shares.values()].reduce((sum, share) => sum + share, 0);
+
+  if (grandTotal === 0) {
+    return [];
+  }
+
+  return [...shares.entries()]
+    .map(([paintName, share]) => ({
+      paintName,
+      percentage: Math.round((share / grandTotal) * 100),
+    }))
+    .sort((a, b) => b.percentage - a.percentage);
+}

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSheetModel, formatMixLine } from './mixSheetModel.js';
+import { aggregateMixUsage, buildSheetModel, formatMixLine } from './mixSheetModel.js';
+import type { SheetColor } from './mixSheetModel.js';
 import type { SavedPalette } from '../types/palette';
 import type { MixRecipe } from '../types/paint';
 
@@ -77,4 +78,38 @@ test('formatMixLine joins parts and names with a middle dot', () => {
     '4 Titanium White · 1 Mars Black',
   );
   assert.equal(formatMixLine([]), '');
+});
+
+test('aggregateMixUsage sums normalized paint shares to 100%, sorted desc', () => {
+  const colors: SheetColor[] = [
+    // color A: 3 white : 1 blue  -> white 0.75, blue 0.25
+    {
+      hex: '#89C5F4',
+      mix: [
+        { paintName: 'Titanium White', parts: 3 },
+        { paintName: 'Phthalocyanine Blue', parts: 1 },
+      ],
+    },
+    // color B: 1 white : 1 black -> white 0.5, black 0.5
+    {
+      hex: '#7A7A7A',
+      mix: [
+        { paintName: 'Titanium White', parts: 1 },
+        { paintName: 'Mars Black', parts: 1 },
+      ],
+    },
+  ];
+  const usage = aggregateMixUsage(colors);
+  // white share = 0.75 + 0.5 = 1.25; blue 0.25; black 0.5; grand total 2.0
+  // -> white 63% (round 62.5), black 25%, blue 13% (round 12.5); rounding may sum to 101.
+  assert.deepEqual(usage, [
+    { paintName: 'Titanium White', percentage: 63 },
+    { paintName: 'Mars Black', percentage: 25 },
+    { paintName: 'Phthalocyanine Blue', percentage: 13 },
+  ]);
+});
+
+test('aggregateMixUsage ignores colors with no mix and returns [] when empty', () => {
+  assert.deepEqual(aggregateMixUsage([{ hex: '#000000', mix: [] }]), []);
+  assert.deepEqual(aggregateMixUsage([]), []);
 });
