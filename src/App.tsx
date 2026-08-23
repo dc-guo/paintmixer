@@ -12,13 +12,23 @@ import { createArtworkThumbnail } from './lib/thumbnails';
 import {
   clampPaletteSize,
   createId,
-  loadOwnedPaintIds,
+  loadPaintSets,
   loadPaletteSize,
   loadSavedPalettes,
-  persistOwnedPaintIds,
+  persistPaintSets,
   persistPaletteSize,
   persistSavedPalettes,
 } from './lib/storage';
+import {
+  createSet,
+  deleteSet,
+  duplicateSet,
+  renameSet,
+  resolvePaintIds,
+  resolveSetId,
+  togglePaint,
+} from './lib/paintSets';
+import type { PaintSetsState } from './lib/paintSets';
 import type { MixRecipe } from './types/paint';
 import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 
@@ -93,7 +103,7 @@ export function App() {
   const [workingColors, setWorkingColors] = useState<SampledColor[]>([]);
   const [activeColorId, setActiveColorId] = useState<string | null>(null);
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(loadSavedPalettes);
-  const [ownedPaintIds, setOwnedPaintIds] = useState<string[]>(loadOwnedPaintIds);
+  const [paintSetsState, setPaintSetsState] = useState<PaintSetsState>(loadPaintSets);
   const [editingPaletteId, setEditingPaletteId] = useState<string | null>(null);
   const [paletteSize, setPaletteSize] = useState<number>(loadPaletteSize);
   // Debounce timer for auto-applying palette-size changes to the artwork.
@@ -167,18 +177,60 @@ export function App() {
 
   useEffect(() => {
     if (hasHydrated.current) {
-      persistOwnedPaintIds(ownedPaintIds);
+      persistPaintSets(paintSetsState);
     }
-  }, [ownedPaintIds]);
+  }, [paintSetsState]);
 
   useEffect(() => {
     hasHydrated.current = true;
   }, []);
 
-  const toggleOwnedPaint = (id: string) => {
-    setOwnedPaintIds((current) =>
-      current.includes(id) ? current.filter((owned) => owned !== id) : [...current, id],
+  const paintSets = paintSetsState.sets;
+  const workingSetId = paintSetsState.workingSetId;
+  const workspaceOwnedIds = resolvePaintIds(paintSets, workingSetId);
+
+  const selectWorkingSet = (id: string) => {
+    setPaintSetsState((current) => ({ ...current, workingSetId: resolveSetId(current.sets, id) }));
+  };
+
+  const createWorkingSet = () => {
+    const set = createSet('New set', createId);
+    setPaintSetsState((current) => ({ sets: [...current.sets, set], workingSetId: set.id }));
+  };
+
+  const renameSetById = (id: string, name: string) => {
+    setPaintSetsState((current) => ({ ...current, sets: renameSet(current.sets, id, name) }));
+  };
+
+  const duplicateSetById = (id: string) => {
+    setPaintSetsState((current) => ({
+      ...current,
+      sets: duplicateSet(current.sets, id, createId),
+    }));
+  };
+
+  const deleteSetById = (id: string) => {
+    setPaintSetsState((current) => deleteSet(current.sets, id, current.workingSetId));
+  };
+
+  const togglePaintInSet = (setId: string, paintId: string) => {
+    setPaintSetsState((current) => ({ ...current, sets: togglePaint(current.sets, setId, paintId) }));
+  };
+
+  const setPaletteSet = (paletteId: string, setId: string) => {
+    setSavedPalettes((current) =>
+      current.map((palette) => (palette.id === paletteId ? { ...palette, paintSetId: setId } : palette)),
     );
+  };
+
+  const createSetForPalette = (paletteId: string) => {
+    const set = createSet('New set', createId);
+    setPaintSetsState((current) => ({ ...current, sets: [...current.sets, set] }));
+    setPaletteSet(paletteId, set.id);
+  };
+
+  const toggleOwnedPaint = (id: string) => {
+    togglePaintInSet(workingSetId, id);
   };
 
   const navigate = (next: Page) => {
@@ -445,7 +497,13 @@ export function App() {
       setSavedPalettes((current) =>
         current.map((palette) =>
           palette.id === editingPalette.id
-            ? { ...palette, name, colors: workingColors, artwork: paletteArtwork ?? palette.artwork }
+            ? {
+                ...palette,
+                name,
+                colors: workingColors,
+                artwork: paletteArtwork ?? palette.artwork,
+                paintSetId: workingSetId,
+              }
             : palette,
         ),
       );
@@ -458,6 +516,7 @@ export function App() {
       colors: workingColors,
       createdAt: new Date().toISOString(),
       artwork: paletteArtwork,
+      paintSetId: workingSetId,
     };
     setSavedPalettes((current) => [palette, ...current]);
     setEditingPaletteId(palette.id);
@@ -486,6 +545,10 @@ export function App() {
     );
     setWorkingColors(palette.colors);
     setActiveColorId(palette.colors[0]?.id ?? null);
+    setPaintSetsState((current) => ({
+      ...current,
+      workingSetId: resolveSetId(current.sets, palette.paintSetId),
+    }));
     navigate('workspace');
   };
 
@@ -553,7 +616,7 @@ export function App() {
             onAddColor={addColor}
             onUpdateColor={updateColor}
             onArtworkSelected={selectArtwork}
-            ownedPaintIds={ownedPaintIds}
+            ownedPaintIds={workspaceOwnedIds}
             onToggleOwnedPaint={toggleOwnedPaint}
             onAutoGenerate={() =>
               artwork ? autoGeneratePalette(artwork.dataUrl) : Promise.resolve(0)
@@ -581,13 +644,19 @@ export function App() {
             onEdit={editPalette}
             onRename={renamePalette}
             onSetColorRecipe={setPaletteColorRecipe}
-            ownedPaintIds={ownedPaintIds}
+            ownedPaintIds={resolvePaintIds(
+              paintSets,
+              savedPalettes.find((palette) => palette.id === route.paletteId)?.paintSetId,
+            )}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />
         ) : null}
         {route.page === 'sheet' ? (
           <SheetPage
-            ownedPaintIds={ownedPaintIds}
+            ownedPaintIds={resolvePaintIds(
+              paintSets,
+              savedPalettes.find((palette) => palette.id === route.paletteId)?.paintSetId,
+            )}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
           />
         ) : null}
