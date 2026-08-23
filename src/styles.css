@@ -472,9 +472,12 @@ h3 {
   min-height: 52px;
 }
 
-/* Panel title with an action tucked into the top-right corner. */
+/* Panel title with an action tucked into the top-right corner. Wraps at
+   narrow widths — the set picker + "Edit · N" button don't fit beside the
+   eyebrow at 375px without it, which caused horizontal page overflow. */
 .panel-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
