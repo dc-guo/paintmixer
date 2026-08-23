@@ -97,6 +97,9 @@ export function SheetPage({ palette, ownedPaintIds }: SheetPageProps) {
           </button>
         </div>
       </div>
+      <p className="mixsheet-share-note micro">
+        A shared link carries the colors and recipes, not the photo — save the PDF to share the image.
+      </p>
       <MixSheet model={model} />
     </div>
   );
