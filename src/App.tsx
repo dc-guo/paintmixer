@@ -657,6 +657,9 @@ export function App() {
               savedPalettes.find((palette) => palette.id === route.paletteId)?.paintSetId,
             )}
             palette={savedPalettes.find((palette) => palette.id === route.paletteId) ?? null}
+            paintSets={paintSets}
+            onSetPaintSet={(setId) => setPaletteSet(route.paletteId, setId)}
+            onCreateSetForPalette={() => createSetForPalette(route.paletteId)}
           />
         ) : null}
         {route.page === 'sheet' ? (

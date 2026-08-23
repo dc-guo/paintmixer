@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { MixEditor } from '../components/MixEditor';
+import { PaintSetPicker } from '../components/PaintSetPicker';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { hexToRgb, isLightColor } from '../lib/color';
@@ -9,6 +10,8 @@ import { CONFIDENCE_LABEL } from '../lib/paintMatching';
 import { aggregatePaintUsage } from '../lib/paintUsage';
 import type { PaintUsage } from '../lib/paintUsage';
 import { buildPaletteSummary } from '../lib/paletteSummary';
+import { resolveSetId } from '../lib/paintSets';
+import type { PaintSet } from '../lib/paintSets';
 import { suggestMixes } from '../lib/recipeEngine';
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
@@ -21,6 +24,9 @@ type PaletteDetailPageProps = {
   onRename: (id: string, name: string) => void;
   onEdit: (palette: SavedPalette) => void;
   onSetColorRecipe: (paletteId: string, colorId: string, recipe: MixRecipe | null) => void;
+  paintSets: PaintSet[];
+  onSetPaintSet: (setId: string) => void;
+  onCreateSetForPalette: () => void;
 };
 
 type PaletteItem = {
@@ -83,6 +89,9 @@ export function PaletteDetailPage({
   onRename,
   onEdit,
   onSetColorRecipe,
+  paintSets,
+  onSetPaintSet,
+  onCreateSetForPalette,
 }: PaletteDetailPageProps) {
   const [mixColorId, setMixColorId] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -222,6 +231,15 @@ export function PaletteDetailPage({
             >
               Copy summary
             </button>
+            <PaintSetPicker
+              onCreateNew={onCreateSetForPalette}
+              onManage={() => {
+                window.location.hash = '#/palettes/sets';
+              }}
+              onSelect={onSetPaintSet}
+              sets={paintSets}
+              value={resolveSetId(paintSets, palette.paintSetId)}
+            />
             <button
               className="secondary-button"
               onClick={() => {
