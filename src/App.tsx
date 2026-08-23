@@ -209,6 +209,14 @@ export function App() {
     setPaintSetsState((current) => ({ sets: [...current.sets, set], workingSetId: set.id }));
   };
 
+  // Used from the Paint sets hub: creating a set there manages the library
+  // but must not repoint the workspace's working set.
+  const createSetDetached = (): string => {
+    const set = createSet('New set', createId);
+    setPaintSetsState((current) => ({ ...current, sets: [...current.sets, set] }));
+    return set.id;
+  };
+
   const renameSetById = (id: string, name: string) => {
     setPaintSetsState((current) => ({ ...current, sets: renameSet(current.sets, id, name) }));
   };
@@ -653,7 +661,7 @@ export function App() {
         ) : null}
         {route.page === 'palettes' ? (
           <PalettesPage
-            onCreateSet={createWorkingSet}
+            onCreateSet={createSetDetached}
             onDeleteSet={deleteSetById}
             onDuplicateSet={duplicateSetById}
             onRenameSet={renameSetById}

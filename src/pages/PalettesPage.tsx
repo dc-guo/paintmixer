@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { formatPaletteMeta } from '../lib/format';
 import { PaintSetDrawer } from '../components/PaintSetDrawer';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { PaintSet } from '../lib/paintSets';
 import type { SavedPalette } from '../types/palette';
 
@@ -11,7 +12,7 @@ type PalettesPageProps = {
   palettes: SavedPalette[];
   paintSets: PaintSet[];
   tab: 'palettes' | 'sets';
-  onCreateSet: () => void;
+  onCreateSet: () => string;
   onRenameSet: (setId: string, name: string) => void;
   onDuplicateSet: (setId: string) => void;
   onDeleteSet: (setId: string) => void;
@@ -29,6 +30,14 @@ export function PalettesPage({
   onTogglePaintInSet,
 }: PalettesPageProps) {
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
+
+  // Back from #/palettes/sets to #/palettes must not leave the drawer open
+  // over the gallery.
+  useEffect(() => {
+    setEditingSetId(null);
+  }, [tab]);
+
+  useEscapeKey(editingSetId !== null, () => setEditingSetId(null));
 
   const editingSet = editingSetId
     ? paintSets.find((set) => set.id === editingSetId) ?? null
@@ -112,7 +121,7 @@ export function PalettesPage({
             </li>
           ))}
           <li>
-            <button className="set-new-card" onClick={onCreateSet} type="button">
+            <button className="set-new-card" onClick={() => setEditingSetId(onCreateSet())} type="button">
               ＋ New paint set
             </button>
           </li>

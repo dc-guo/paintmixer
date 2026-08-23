@@ -81,12 +81,7 @@ export function PaintSetDrawer({
           </button>
         </header>
         <div className="drawer-set-row">
-          <PaintSetPicker
-            onCreateNew={() => onSelectSet(set.id)}
-            onSelect={onSelectSet}
-            sets={sets}
-            value={set.id}
-          />
+          <PaintSetPicker onSelect={onSelectSet} sets={sets} value={set.id} />
           <div className="drawer-set-actions">
             <button
               className="text-link"
