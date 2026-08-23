@@ -1,9 +1,12 @@
 import type { MixRecipe } from '../types/paint';
 import type { SampledColor, SavedPalette } from '../types/palette';
+import { resolveSetId, seedPaintSets } from './paintSets.js';
+import type { PaintSet, PaintSetsState } from './paintSets';
 
 const SAVED_PALETTES_KEY = 'paintbridge.savedPalettes.v1';
 const OWNED_PAINTS_KEY = 'paintbridge.ownedPaints.v1';
 const PALETTE_SIZE_KEY = 'paintbridge.paletteSize.v1';
+const PAINT_SETS_KEY = 'paintbridge.paintSets.v1';
 
 export const MIN_PALETTE_SIZE = 3;
 export const MAX_PALETTE_SIZE = 8;
@@ -178,12 +181,16 @@ export function sanitizeSavedPalettes(value: unknown): SavedPalette[] {
     return [];
   }
 
-  return value.filter(isSavedPalette).map((palette) => ({
-    ...palette,
-    colors: palette.colors
-      .map(sanitizeColor)
-      .filter((color): color is SampledColor => color !== null),
-  }));
+  return value.filter(isSavedPalette).map((palette) => {
+    const { paintSetId, ...rest } = palette as SavedPalette & { paintSetId?: unknown };
+    return {
+      ...rest,
+      ...(typeof paintSetId === 'string' ? { paintSetId } : {}),
+      colors: palette.colors
+        .map(sanitizeColor)
+        .filter((color): color is SampledColor => color !== null),
+    };
+  });
 }
 
 export function loadSavedPalettes(): SavedPalette[] {
@@ -245,6 +252,83 @@ export function loadOwnedPaintIds(): string[] {
 export function persistOwnedPaintIds(ids: string[]) {
   try {
     window.localStorage.setItem(OWNED_PAINTS_KEY, JSON.stringify(ids));
+  } catch {
+    // Storage can be unavailable (private mode, quota); persistence is best-effort.
+  }
+}
+
+function sanitizePaintSet(value: unknown): PaintSet | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+
+  if (typeof raw.id !== 'string' || typeof raw.name !== 'string' || !Array.isArray(raw.paintIds)) {
+    return null;
+  }
+
+  const set: PaintSet = {
+    id: raw.id,
+    name: raw.name,
+    paintIds: raw.paintIds.filter((id): id is string => typeof id === 'string'),
+  };
+
+  if (raw.isPreset === true) {
+    set.isPreset = true;
+  }
+
+  return set;
+}
+
+/** Validates a raw parsed value into paint-sets state; null when no valid set
+ * survives (the caller re-seeds). Pure and exported for tests. */
+export function sanitizePaintSetsState(value: unknown): PaintSetsState | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+
+  if (!Array.isArray(raw.sets)) {
+    return null;
+  }
+
+  const sets = raw.sets
+    .map(sanitizePaintSet)
+    .filter((set): set is PaintSet => set !== null);
+
+  if (sets.length === 0) {
+    return null;
+  }
+
+  const requested = typeof raw.workingSetId === 'string' ? raw.workingSetId : undefined;
+  return { sets, workingSetId: resolveSetId(sets, requested) };
+}
+
+/** Loads paint sets; a missing or unusable key seeds Starter + a "My paints"
+ * migration of the old owned-paints list (which is left intact as a safety net). */
+export function loadPaintSets(): PaintSetsState {
+  try {
+    const raw = window.localStorage.getItem(PAINT_SETS_KEY);
+
+    if (raw) {
+      const state = sanitizePaintSetsState(JSON.parse(raw));
+
+      if (state) {
+        return state;
+      }
+    }
+  } catch {
+    // Fall through to seeding.
+  }
+
+  return seedPaintSets(loadOwnedPaintIds());
+}
+
+export function persistPaintSets(state: PaintSetsState) {
+  try {
+    window.localStorage.setItem(PAINT_SETS_KEY, JSON.stringify(state));
   } catch {
     // Storage can be unavailable (private mode, quota); persistence is best-effort.
   }

@@ -28,6 +28,11 @@ export type SavedPalette = {
   name: string;
   colors: SampledColor[];
   createdAt: string;
+  /**
+   * Which paint set this palette mixes from. Absent on pre-paint-sets
+   * palettes and resolved with the my-paints/first-set fallback at read time.
+   */
+  paintSetId?: string;
   /** Downscaled local thumbnail of the source artwork; absent for hex-only palettes. */
   artwork?: {
     thumbnailDataUrl: string;

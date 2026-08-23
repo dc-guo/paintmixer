@@ -4,10 +4,12 @@ import {
   clampPaletteSize,
   parsePaletteSize,
   sanitizeSavedPalettes,
+  sanitizePaintSetsState,
   DEFAULT_PALETTE_SIZE,
   MIN_PALETTE_SIZE,
   MAX_PALETTE_SIZE,
 } from './storage.js';
+import { MY_PAINTS_SET_ID, STARTER_SET_ID } from './paintSets.js';
 
 function palette(colors: unknown[]) {
   return { id: 'p1', name: 'Test palette', createdAt: '2026-01-01T00:00:00.000Z', colors };
@@ -115,4 +117,51 @@ test('sanitizeSavedPalettes rejects malformed top-level input', () => {
   assert.deepEqual(sanitizeSavedPalettes(null), []);
   assert.deepEqual(sanitizeSavedPalettes('not-an-array'), []);
   assert.deepEqual(sanitizeSavedPalettes([{ id: 'p1' }]), []); // missing name/createdAt/colors
+});
+
+test('sanitizePaintSetsState keeps valid sets, drops junk, re-resolves workingSetId', () => {
+  const state = sanitizePaintSetsState({
+    sets: [
+      { id: 'a', name: 'Good', paintIds: ['titanium-white', 7, 'mars-black'] },
+      { id: 8, name: 'bad id', paintIds: [] },
+      { id: 'b', name: 'Preset-ish', paintIds: [], isPreset: 'yes' },
+    ],
+    workingSetId: 'gone',
+  });
+  assert.ok(state);
+  if (state) {
+    assert.deepEqual(state.sets.map((set) => set.id), ['a', 'b']);
+    assert.deepEqual(state.sets[0].paintIds, ['titanium-white', 'mars-black']); // non-strings dropped
+    assert.equal(state.sets[1].isPreset, undefined); // non-boolean-true stripped
+    assert.equal(state.workingSetId, 'a'); // dangling -> no my-paints -> first
+  }
+});
+
+test('sanitizePaintSetsState returns null when nothing valid survives', () => {
+  assert.equal(sanitizePaintSetsState({ sets: [], workingSetId: 'x' }), null);
+  assert.equal(sanitizePaintSetsState({ sets: 'nope' }), null);
+  assert.equal(sanitizePaintSetsState(null), null);
+  assert.equal(sanitizePaintSetsState([1, 2, 3]), null);
+});
+
+test('sanitizePaintSetsState keeps isPreset only when literally true', () => {
+  const state = sanitizePaintSetsState({
+    sets: [{ id: STARTER_SET_ID, name: 'Starter', paintIds: [], isPreset: true }],
+    workingSetId: STARTER_SET_ID,
+  });
+  assert.ok(state);
+  if (state) {
+    assert.equal(state.sets[0].isPreset, true);
+  }
+});
+
+test('sanitizeSavedPalettes passes a string paintSetId through and drops other types', () => {
+  const palettes = sanitizeSavedPalettes([
+    { id: 'p1', name: 'A', createdAt: 'now', colors: [], paintSetId: MY_PAINTS_SET_ID },
+    { id: 'p2', name: 'B', createdAt: 'now', colors: [], paintSetId: 42 },
+    { id: 'p3', name: 'C', createdAt: 'now', colors: [] },
+  ]);
+  assert.equal(palettes[0].paintSetId, MY_PAINTS_SET_ID);
+  assert.equal(palettes[1].paintSetId, undefined);
+  assert.equal(palettes[2].paintSetId, undefined);
 });
