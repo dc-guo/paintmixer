@@ -5,12 +5,15 @@ import { ImageUploader } from '../components/ImageUploader';
 import { ManualColorInput } from '../components/ManualColorInput';
 import { MixComparison } from '../components/MixComparison';
 import { MixEditor } from '../components/MixEditor';
+import { PaintSetDrawer } from '../components/PaintSetDrawer';
+import { PaintSetPicker } from '../components/PaintSetPicker';
 import { SwatchCheckModal } from '../components/SwatchCheckModal';
 import { WorkingPaletteStrip } from '../components/WorkingPaletteStrip';
 import { liquitexBasics } from '../data/liquitexBasics';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { getPrintViability, hexToRgb } from '../lib/color';
 import { CONFIDENCE_LABEL, matchPaints } from '../lib/paintMatching';
+import type { PaintSet } from '../lib/paintSets';
 import { normalizeLabel } from '../lib/paletteEdits';
 import { suggestMixes } from '../lib/recipeEngine';
 import { MAX_PALETTE_SIZE, MIN_PALETTE_SIZE } from '../lib/storage';
@@ -53,6 +56,14 @@ type WorkspacePageProps = {
   onSetColorLabel: (id: string, label: string) => void;
   onSetColorNotes: (id: string, notes: string) => void;
   onMoveColor: (id: string, delta: number) => void;
+  paintSets: PaintSet[];
+  workingSetId: string;
+  onSelectSet: (id: string) => void;
+  onCreateSet: () => void;
+  onRenameSet: (setId: string, name: string) => void;
+  onDuplicateSet: (setId: string) => void;
+  onDeleteSet: (setId: string) => void;
+  onTogglePaintInSet: (setId: string, paintId: string) => void;
 };
 
 export function WorkspacePage({
@@ -75,6 +86,14 @@ export function WorkspacePage({
   onSetColorLabel,
   onSetColorNotes,
   onMoveColor,
+  paintSets,
+  workingSetId,
+  onSelectSet,
+  onCreateSet,
+  onRenameSet,
+  onDuplicateSet,
+  onDeleteSet,
+  onTogglePaintInSet,
 }: WorkspacePageProps) {
   const [paletteName, setPaletteName] = useState(editingPaletteName ?? '');
   const [justSaved, setJustSaved] = useState<'saved' | 'updated' | null>(null);
@@ -86,7 +105,6 @@ export function WorkspacePage({
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [paintQuery, setPaintQuery] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [isSwatchCheckOpen, setIsSwatchCheckOpen] = useState(false);
@@ -108,13 +126,6 @@ export function WorkspacePage({
     const rgb = deferredHex ? hexToRgb(deferredHex) : null;
     return rgb ? matchPaints(rgb, liquitexBasics, 3) : [];
   }, [deferredHex]);
-
-  const filteredPaints = useMemo(() => {
-    const query = paintQuery.trim().toLowerCase();
-    return query
-      ? liquitexBasics.filter((paint) => paint.name.toLowerCase().includes(query))
-      : liquitexBasics;
-  }, [paintQuery]);
 
   const ownedPaints = useMemo(
     () => liquitexBasics.filter((paint) => ownedPaintIds.includes(paint.id)),
@@ -508,13 +519,27 @@ export function WorkspacePage({
             <article className="panel">
               <div className="panel-head">
                 <p className="eyebrow">Closest Liquitex BASICS</p>
-                <button
-                  className="text-button"
-                  onClick={() => setIsInventoryOpen(true)}
-                  type="button"
-                >
-                  Edit paints · {ownedPaintIds.length}
-                </button>
+                <div className="panel-head-actions">
+                  <PaintSetPicker
+                    onCreateNew={() => {
+                      onCreateSet();
+                      setIsInventoryOpen(true);
+                    }}
+                    onManage={() => {
+                      window.location.hash = '#/palettes/sets';
+                    }}
+                    onSelect={onSelectSet}
+                    sets={paintSets}
+                    value={workingSetId}
+                  />
+                  <button
+                    className="text-button"
+                    onClick={() => setIsInventoryOpen(true)}
+                    type="button"
+                  >
+                    Edit · {ownedPaintIds.length}
+                  </button>
+                </div>
               </div>
               {matches.length > 0 ? (
                 <ul className="match-list">
@@ -553,7 +578,7 @@ export function WorkspacePage({
               <p className="empty-state">Select a color first.</p>
             ) : ownedPaints.length === 0 ? (
               <p className="empty-state">
-                Mark the paints you own ("Edit my paints" above) to get starter mixes.
+                Add paints to this set ("Edit" above) to get starter mixes.
               </p>
             ) : preview ? (
               !previewRecipe ? (
@@ -597,59 +622,16 @@ export function WorkspacePage({
       </div>
 
       {isInventoryOpen ? (
-        <div className="drawer-backdrop" onClick={() => setIsInventoryOpen(false)}>
-          <aside
-            aria-label="Paint inventory"
-            className="drawer"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <header className="drawer-head">
-              <h2>My paints</h2>
-              <button
-                className="secondary-button"
-                onClick={() => setIsInventoryOpen(false)}
-                type="button"
-              >
-                Close
-              </button>
-            </header>
-            <input
-              aria-label="Search paints"
-              autoFocus
-              className="drawer-search"
-              onChange={(event) => setPaintQuery(event.target.value)}
-              placeholder="Search paints"
-              value={paintQuery}
-            />
-            <p className="micro">
-              {ownedPaintIds.length} of {liquitexBasics.length} owned · approximate colors
-            </p>
-            {filteredPaints.length > 0 ? (
-              <ul className="paint-list">
-                {filteredPaints.map((paint) => (
-                  <li key={paint.id}>
-                    <label className="paint-row">
-                      <span
-                        aria-hidden
-                        className="mini-swatch"
-                        style={{ backgroundColor: paint.hex }}
-                      />
-                      <span className="paint-name">{paint.name}</span>
-                      <input
-                        checked={ownedPaintIds.includes(paint.id)}
-                        onChange={() => onToggleOwnedPaint(paint.id)}
-                        type="checkbox"
-                      />
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="empty-state">No paints match "{paintQuery}".</p>
-            )}
-          </aside>
-        </div>
+        <PaintSetDrawer
+          onClose={() => setIsInventoryOpen(false)}
+          onDelete={onDeleteSet}
+          onDuplicate={onDuplicateSet}
+          onRename={onRenameSet}
+          onSelectSet={onSelectSet}
+          onTogglePaint={onTogglePaintInSet}
+          setId={workingSetId}
+          sets={paintSets}
+        />
       ) : null}
 
       {isSwatchCheckOpen && activeColor ? (

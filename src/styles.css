@@ -1908,6 +1908,45 @@ h3 {
   color: var(--ink-faint);
 }
 
+/* ---------- paint sets ---------- */
+
+.set-picker {
+  max-width: 150px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.set-picker:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.panel-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.drawer-set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.drawer-set-actions {
+  display: flex;
+  gap: 12px;
+  flex: none;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 860px) {

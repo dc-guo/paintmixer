@@ -630,6 +630,14 @@ export function App() {
             onMoveColor={moveColor}
             onPaletteSizeChange={changePaletteSize}
             paletteSize={paletteSize}
+            paintSets={paintSets}
+            workingSetId={workingSetId}
+            onSelectSet={selectWorkingSet}
+            onCreateSet={createWorkingSet}
+            onRenameSet={renameSetById}
+            onDuplicateSet={duplicateSetById}
+            onDeleteSet={deleteSetById}
+            onTogglePaintInSet={togglePaintInSet}
           />
         ) : null}
         {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}
