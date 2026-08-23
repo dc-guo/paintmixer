@@ -35,7 +35,9 @@ import type { ColorSource, SampledColor, SavedPalette } from './types/palette';
 type Page = 'start' | 'workspace' | 'palettes';
 
 type Route =
-  | { page: Page }
+  | { page: 'start' }
+  | { page: 'workspace' }
+  | { page: 'palettes'; tab: 'palettes' | 'sets' }
   | { page: 'palette'; paletteId: string }
   | { page: 'sheet'; paletteId: string }
   | { page: 'shared'; encoded: string };
@@ -54,8 +56,17 @@ const NAV_ITEMS: Array<{ page: Page; label: string; hash: string }> = [
 function routeFromHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, '');
 
-  if (hash === 'workspace' || hash === 'palettes') {
-    return { page: hash };
+  if (hash === 'workspace') {
+    return { page: 'workspace' };
+  }
+
+  if (hash === 'palettes') {
+    return { page: 'palettes', tab: 'palettes' };
+  }
+
+  // Must run before the detail regex, which would swallow 'palettes/sets'.
+  if (hash === 'palettes/sets') {
+    return { page: 'palettes', tab: 'sets' };
   }
 
   const sheet = /^palettes\/(.+)\/sheet$/.exec(hash);
@@ -64,7 +75,7 @@ function routeFromHash(): Route {
     try {
       return { page: 'sheet', paletteId: decodeURIComponent(sheet[1]) };
     } catch {
-      return { page: 'palettes' };
+      return { page: 'palettes', tab: 'palettes' };
     }
   }
 
@@ -75,7 +86,7 @@ function routeFromHash(): Route {
       return { page: 'palette', paletteId: decodeURIComponent(detail[1]) };
     } catch {
       // Malformed percent-encoding in a shared link; fall back to the gallery.
-      return { page: 'palettes' };
+      return { page: 'palettes', tab: 'palettes' };
     }
   }
 
@@ -640,7 +651,18 @@ export function App() {
             onTogglePaintInSet={togglePaintInSet}
           />
         ) : null}
-        {route.page === 'palettes' ? <PalettesPage palettes={savedPalettes} /> : null}
+        {route.page === 'palettes' ? (
+          <PalettesPage
+            onCreateSet={createWorkingSet}
+            onDeleteSet={deleteSetById}
+            onDuplicateSet={duplicateSetById}
+            onRenameSet={renameSetById}
+            onTogglePaintInSet={togglePaintInSet}
+            paintSets={paintSets}
+            palettes={savedPalettes}
+            tab={route.tab}
+          />
+        ) : null}
         {route.page === 'palette' ? (
           <PaletteDetailPage
             key={route.paletteId}

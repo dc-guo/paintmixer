@@ -1947,6 +1947,105 @@ h3 {
   flex: none;
 }
 
+.page-tabs {
+  display: flex;
+  gap: 22px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 22px;
+}
+
+.page-tabs a {
+  padding-bottom: 10px;
+  color: var(--ink-faint);
+  font-size: 1.05rem;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.page-tabs a:hover {
+  color: var(--ink);
+}
+
+.page-tabs a[aria-current='page'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.set-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.set-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: var(--card);
+}
+
+.set-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.set-card-name {
+  font-size: 1.15rem;
+}
+
+.set-card-strip {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 14px;
+  min-height: 26px;
+}
+
+.set-card-strip span {
+  flex: 1;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid rgba(47, 50, 53, 0.06);
+}
+
+.set-card-strip .empty {
+  border: 1.5px dashed var(--line);
+  background: transparent;
+}
+
+.set-card-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.text-link.danger {
+  color: var(--danger);
+}
+
+.set-new-card {
+  width: 100%;
+  min-height: 120px;
+  border: 1.5px dashed var(--ink-faint);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ink-faint);
+  font: inherit;
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+.set-new-card:hover {
+  border-color: var(--accent);
+  color: var(--ink-soft);
+  background: var(--accent-wash);
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 860px) {
